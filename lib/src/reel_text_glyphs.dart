@@ -94,6 +94,7 @@ class _SettledGlyphSlot extends StatelessWidget {
           glyph,
           width: width,
           height: height,
+          horizontalBleed: _horizontalGlyphBleed(height),
           style: style,
           textDirection: textDirection,
           locale: locale,
@@ -148,6 +149,7 @@ class _GlyphSlot extends StatelessWidget {
           slot.to,
           width: metrics.toWidth,
           height: metrics.height,
+          horizontalBleed: _horizontalGlyphBleed(metrics.height),
           style: effectiveToStyle,
           textDirection: textDirection,
           locale: locale,
@@ -190,6 +192,7 @@ class _GlyphSlot extends StatelessWidget {
                       slot.from,
                       width: metrics.fromWidth,
                       height: metrics.height,
+                      horizontalBleed: _horizontalGlyphBleed(metrics.height),
                       style: effectiveFromStyle,
                       textDirection: textDirection,
                       locale: locale,
@@ -207,6 +210,7 @@ class _GlyphSlot extends StatelessWidget {
                     slot.to,
                     width: metrics.toWidth,
                     height: metrics.height,
+                    horizontalBleed: _horizontalGlyphBleed(metrics.height),
                     style: effectiveToStyle.copyWith(color: incomingColor),
                     textDirection: textDirection,
                     locale: locale,
@@ -241,12 +245,14 @@ class _VerticalSlotClipper extends CustomClipper<Rect> {
 }
 
 double _verticalSlotBleed(double height) => math.max(12, height * 0.38);
+double _horizontalGlyphBleed(double height) => math.max(4, height * 0.08);
 
 class _GlyphFace extends StatelessWidget {
   const _GlyphFace(
     this.text, {
     required this.width,
     required this.height,
+    this.horizontalBleed = 0,
     required this.style,
     required this.textDirection,
     required this.locale,
@@ -256,6 +262,7 @@ class _GlyphFace extends StatelessWidget {
   final String text;
   final double width;
   final double height;
+  final double horizontalBleed;
   final TextStyle style;
   final TextDirection textDirection;
   final Locale? locale;
@@ -263,20 +270,26 @@ class _GlyphFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OverflowBox(
-      alignment: _inlineStartAlignment(textDirection),
-      minWidth: width,
-      maxWidth: width,
-      minHeight: height,
-      maxHeight: height,
-      child: Align(
+    final paintWidth = width + horizontalBleed;
+    return SizedBox(
+      width: width,
+      height: height,
+      child: OverflowBox(
         alignment: _inlineStartAlignment(textDirection),
-        child: _GlyphText(
-          text,
-          style: style,
-          textDirection: textDirection,
-          locale: locale,
-          strutStyle: strutStyle,
+        minWidth: paintWidth,
+        maxWidth: paintWidth,
+        minHeight: height,
+        maxHeight: height,
+        child: SizedBox(
+          width: paintWidth,
+          height: height,
+          child: _GlyphText(
+            text,
+            style: style,
+            textDirection: textDirection,
+            locale: locale,
+            strutStyle: strutStyle,
+          ),
         ),
       ),
     );

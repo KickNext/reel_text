@@ -1,3 +1,12 @@
+## 0.1.1
+
+- Fixed horizontal glyph clipping for heavy text styles in both rolling and
+  settled states.
+- Kept animated row sizing on the original interpolated-width behavior while
+  giving individual glyph faces extra paint room.
+- Added regression coverage for glyph paint bleed, bounded alignment, and
+  selection-surface layout.
+
 ## 0.1.0
 
 - Split internal implementation into focused Dart part files while preserving

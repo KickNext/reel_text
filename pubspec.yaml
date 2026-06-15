@@ -1,6 +1,6 @@
 name: reel_text
 description: A tactile Flutter text roll animation for tiny labels, counters, status text, and command buttons.
-version: 0.1.0
+version: 0.1.1
 homepage: https://kicknext.github.io/reel_text/
 repository: https://github.com/KickNext/reel_text
 issue_tracker: https://github.com/KickNext/reel_text/issues

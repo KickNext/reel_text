@@ -303,6 +303,73 @@ void main() {
     expect(rollingWidth, lessThan(toWidth));
   });
 
+  testWidgets('glyph faces get paint bleed without reserving width', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('paint_bleed_reel');
+    const style = TextStyle(fontSize: 112, fontWeight: FontWeight.w900);
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 240),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      curve: Curves.linear,
+      bounce: 0,
+      skipUnchanged: false,
+    );
+
+    final painter = TextPainter(
+      text: const TextSpan(text: '0', style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: ReelText(text, key: reelKey, style: style, options: options),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(''));
+    await tester.pumpWidget(frame('0'));
+    await tester.pump(const Duration(milliseconds: 80));
+
+    final rollingWidth = tester.getSize(find.byKey(reelKey)).width;
+    final finiteFaceWidths = tester
+        .widgetList<OverflowBox>(find.byType(OverflowBox))
+        .map((box) => box.maxWidth)
+        .whereType<double>()
+        .where((width) => width.isFinite)
+        .toList();
+
+    expect(rollingWidth, greaterThan(0));
+    expect(rollingWidth, lessThan(painter.size.width));
+    expect(finiteFaceWidths, contains(greaterThan(painter.size.width + 3)));
+
+    await tester.pumpAndSettle();
+
+    final settledFaceWidths = tester
+        .widgetList<OverflowBox>(find.byType(OverflowBox))
+        .map((box) => box.maxWidth)
+        .whereType<double>()
+        .where((width) => width.isFinite)
+        .toList();
+
+    expect(
+      tester.getSize(find.byKey(reelKey)).width,
+      closeTo(painter.size.width, 0.01),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('reel_text_settled_glyphs')))
+          .width,
+      closeTo(painter.size.width, 0.01),
+    );
+    expect(settledFaceWidths, contains(greaterThan(painter.size.width + 3)));
+  });
+
   testWidgets('complex emoji clusters match Text size and roll safely', (
     tester,
   ) async {
@@ -443,9 +510,13 @@ void main() {
     );
 
     final box = tester.getRect(find.byKey(boxKey));
+    final glyphRow = tester.getRect(
+      find.byKey(const ValueKey('reel_text_settled_glyphs')),
+    );
     final visualGlyph = tester.getRect(find.text('👍🏽'));
 
-    expect(visualGlyph.right, closeTo(box.right, 0.01));
+    expect(glyphRow.right, closeTo(box.right, 0.01));
+    expect(visualGlyph.right, greaterThanOrEqualTo(box.right));
   });
 
   testWidgets('rich text keeps styled spans selectable as one text run', (
@@ -723,9 +794,13 @@ void main() {
     );
 
     final box = tester.getRect(find.byKey(boxKey));
+    final glyphRow = tester.getRect(
+      find.byKey(const ValueKey('reel_text_settled_glyphs')),
+    );
     final lastGlyph = tester.getRect(find.text('o'));
 
-    expect(lastGlyph.right, closeTo(box.right, 0.01));
+    expect(glyphRow.right, closeTo(box.right, 0.01));
+    expect(lastGlyph.right, greaterThanOrEqualTo(box.right));
   });
 
   testWidgets('textAlign end keeps Text-like size under loose constraints', (
