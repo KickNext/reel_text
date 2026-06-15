@@ -370,6 +370,28 @@ void main() {
     );
   });
 
+  testWidgets('mobile app bar keeps actions on the right edge', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final topFrame = tester.getRect(
+      find.byKey(const ValueKey('shell_top_bar_frame')),
+    );
+    final title = tester.getRect(find.byKey(const ValueKey('app_bar_title')));
+    final actions = tester.getRect(
+      find.byKey(const ValueKey('app_bar_actions')),
+    );
+
+    expect(title.left, closeTo(topFrame.left + 14, 0.01));
+    expect(actions.right, closeTo(topFrame.right - 14, 0.01));
+    expect(title.right, lessThan(actions.left));
+  });
+
   testWidgets('home try-it strip drives a live ReelText roll', (tester) async {
     await tester.pumpWidget(
       const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),

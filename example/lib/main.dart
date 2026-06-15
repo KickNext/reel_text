@@ -369,6 +369,7 @@ class _TopBarState extends State<_TopBar> {
           compact: compact,
         );
         final actions = Row(
+          key: const ValueKey('app_bar_actions'),
           mainAxisSize: MainAxisSize.min,
           children: [
             toggle,
@@ -391,7 +392,12 @@ class _TopBarState extends State<_TopBar> {
                       children: [
                         Row(
                           children: [
-                            Flexible(child: brand),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: brand,
+                              ),
+                            ),
                             const SizedBox(width: 12),
                             actions,
                           ],
