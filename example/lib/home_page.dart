@@ -1821,8 +1821,8 @@ class _InstallBlockState extends State<_InstallBlock> {
             'flutter pub add reel_text',
             style: Studio.mono(
               size: 13,
-              color: Studio.text,
-              weight: FontWeight.w700,
+              color: Studio.text.withValues(alpha: 0.9),
+              weight: FontWeight.w600,
             ),
           ),
         ),

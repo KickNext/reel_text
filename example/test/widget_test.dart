@@ -9,11 +9,19 @@ import 'package:reel_text_example/main.dart';
 import 'package:reel_text_example/studio.dart';
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+  });
+
+  tearDown(() {
+    binding.platformDispatcher.clearPlatformBrightnessTestValue();
+  });
+
   test(
     'showcase package version is loaded from the root pubspec asset',
     () async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-
       final bundledPubspec = await rootBundle.loadString(
         'packages/reel_text/pubspec.yaml',
       );
@@ -148,6 +156,41 @@ void main() {
       Theme.of(tester.element(scaffold)).scaffoldBackgroundColor,
       equals(Studio.background),
     );
+  });
+
+  testWidgets('app follows platform brightness until the theme is toggled', (
+    tester,
+  ) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final scaffold = find.byType(Scaffold);
+    expect(Theme.of(tester.element(scaffold)).brightness, Brightness.light);
+    expect(Studio.isLight, isTrue);
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    WidgetsBinding.instance.handlePlatformBrightnessChanged();
+    await tester.pumpAndSettle();
+
+    expect(Theme.of(tester.element(scaffold)).brightness, Brightness.dark);
+    expect(Studio.isLight, isFalse);
+
+    await tester.tap(find.byKey(const ValueKey('theme_toggle_button')));
+    await tester.pumpAndSettle();
+
+    expect(Theme.of(tester.element(scaffold)).brightness, Brightness.light);
+    expect(Studio.isLight, isTrue);
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    WidgetsBinding.instance.handlePlatformBrightnessChanged();
+    await tester.pumpAndSettle();
+
+    expect(Theme.of(tester.element(scaffold)).brightness, Brightness.light);
+    expect(Studio.isLight, isTrue);
   });
 
   testWidgets(

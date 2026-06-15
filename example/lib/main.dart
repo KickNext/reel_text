@@ -17,9 +17,11 @@ const double _kShellMaxWidth = 1280;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.archivoBlack();
-  GoogleFonts.spaceMono();
-  GoogleFonts.spaceMono(fontWeight: FontWeight.w700);
+  GoogleFonts.instrumentSans(fontWeight: FontWeight.w700);
+  GoogleFonts.instrumentSans(fontWeight: FontWeight.w800);
+  GoogleFonts.jetBrainsMono();
+  GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w600);
+  GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w700);
   await GoogleFonts.pendingFonts();
 
   runApp(const ReelTextExampleApp());
@@ -42,13 +44,42 @@ class ReelTextExampleApp extends StatefulWidget {
   State<ReelTextExampleApp> createState() => _ReelTextExampleAppState();
 }
 
-class _ReelTextExampleAppState extends State<ReelTextExampleApp> {
-  var _brightness = Brightness.dark;
+class _ReelTextExampleAppState extends State<ReelTextExampleApp>
+    with WidgetsBindingObserver {
+  Brightness? _brightnessOverride;
+
+  Brightness get _brightness =>
+      _brightnessOverride ??
+      WidgetsBinding.instance.platformDispatcher.platformBrightness;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    if (_brightnessOverride == null && mounted) {
+      setState(() {});
+    }
+  }
+
+  void _setBrightness(Brightness brightness) {
+    setState(() => _brightnessOverride = brightness);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final brightness = _brightness;
     Studio.fontsEnabled = widget.useGoogleFonts;
-    Studio.brightness = _brightness;
+    Studio.brightness = brightness;
     final scheme = Studio.scheme;
     return MaterialApp(
       title: 'reel_text studio',
@@ -99,8 +130,8 @@ class _ReelTextExampleAppState extends State<ReelTextExampleApp> {
       home: StudioShell(
         autoPlayHero: widget.autoPlayHero,
         loadLiveMetadata: widget.useGoogleFonts,
-        brightness: _brightness,
-        onBrightnessChanged: (value) => setState(() => _brightness = value),
+        brightness: brightness,
+        onBrightnessChanged: _setBrightness,
       ),
     );
   }

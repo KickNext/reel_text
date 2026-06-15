@@ -129,24 +129,28 @@ abstract final class Studio {
     return (lighter + 0.05) / (darker + 0.05);
   }
 
-  /// Display face: Archivo Black — single heavy weight, poster energy.
+  /// Display face: Instrument Sans, clean but less generic than Inter.
   static TextStyle display({
     double size = 64,
     Color? color,
     double height = 1.0,
-    double letterSpacing = -1,
+    double letterSpacing = 0,
+    FontWeight weight = FontWeight.w800,
   }) {
     final style = TextStyle(
       color: color ?? text,
       fontSize: size,
       height: height,
       letterSpacing: letterSpacing,
-      fontWeight: FontWeight.w900,
+      fontWeight: weight,
     );
-    return fontsEnabled ? GoogleFonts.archivoBlack(textStyle: style) : style;
+    if (!fontsEnabled) {
+      return style;
+    }
+    return GoogleFonts.instrumentSans(textStyle: style);
   }
 
-  /// Technical face: Space Mono — captions, numbers, code.
+  /// Technical face: JetBrains Mono, crisp for small code and counters.
   static TextStyle mono({
     double size = 12,
     Color? color,
@@ -162,7 +166,7 @@ abstract final class Studio {
       height: height,
       fontFamilyFallback: const ['Menlo', 'Consolas', 'monospace'],
     );
-    return fontsEnabled ? GoogleFonts.spaceMono(textStyle: style) : style;
+    return fontsEnabled ? GoogleFonts.jetBrainsMono(textStyle: style) : style;
   }
 
   /// Body face: system, quiet on purpose.

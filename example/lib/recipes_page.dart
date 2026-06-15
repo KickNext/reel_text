@@ -119,7 +119,16 @@ class _RecipeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Studio.display(size: 16, letterSpacing: 0)),
+          Text(
+            title,
+            style: Studio.mono(
+              size: 12.5,
+              color: Studio.text,
+              height: 1.25,
+              letterSpacing: 0.1,
+              weight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 7),
           Text(blurb, style: Studio.body(size: 12.5)),
           const SizedBox(height: 16),
