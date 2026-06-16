@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.1.4
+
 - Added accessibility guideline coverage for the example app across desktop and
   mobile Home, Recipes, and Editor layouts.
 - Improved example tap targets, semantic labels, and text-scale resilience for
