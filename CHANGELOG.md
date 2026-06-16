@@ -6,6 +6,9 @@
   top navigation, metadata links, recipe controls, and editor controls.
 - Made `ReelText.rich` respect nested `TextSpan.semanticsLabel` values unless a
   widget-level `semanticsLabel` override is provided.
+- Fixed glyph width measurement for mixed RTL/LTR bidi labels so internal slot
+  widths cannot become negative.
+- Added RTL, mixed bidi, and locale layout regression coverage.
 
 ## 0.1.3
 
