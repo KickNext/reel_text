@@ -665,6 +665,41 @@ void main() {
     expect(find.byKey(const ValueKey('reel_text_rolling')), findsWidgets);
 
     await tester.dragUntilVisible(
+      find.byKey(const ValueKey('recipe_bidi_motion_slot')),
+      recipesList,
+      const Offset(0, -120),
+    );
+    expect(slotHeight('recipe_bidi_motion_slot'), 62);
+    expect(
+      tester
+          .widget<Directionality>(
+            find.byKey(const ValueKey('recipe_bidi_directionality')),
+          )
+          .textDirection,
+      TextDirection.rtl,
+    );
+    final bidiText = tester.widget<ReelText>(
+      find.byKey(const ValueKey('recipe_bidi_text')),
+    );
+    expect(bidiText.textAlign, TextAlign.start);
+    expect(bidiText.locale, const Locale('he'));
+
+    final rollButton = find.ancestor(
+      of: find.text('Roll RTL'),
+      matching: find.byType(OutlinedButton),
+    );
+    expect(rollButton, findsOneWidget);
+    tester.widget<OutlinedButton>(rollButton).onPressed!();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_bidi_motion_slot')),
+        matching: find.byKey(const ValueKey('reel_text_rolling')),
+      ),
+      findsWidgets,
+    );
+
+    await tester.dragUntilVisible(
       find.byKey(const ValueKey('recipe_flash_motion_slot')),
       recipesList,
       const Offset(0, -120),

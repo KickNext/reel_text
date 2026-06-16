@@ -9,6 +9,7 @@
 - Fixed glyph width measurement for mixed RTL/LTR bidi labels so internal slot
   widths cannot become negative.
 - Added RTL, mixed bidi, and locale layout regression coverage.
+- Added an example RTL/bidi recipe for visually checking mixed-direction rolls.
 
 ## 0.1.3
 

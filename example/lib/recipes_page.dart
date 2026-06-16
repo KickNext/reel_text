@@ -22,6 +22,12 @@ class RecipesPage extends StatelessWidget {
         code: _declarativeCode,
       ),
       const _RecipeCard(
+        title: 'RTL / bidi',
+        blurb: 'Mixed left-to-right tokens roll inside a right-to-left line.',
+        preview: _BidiPreview(),
+        code: _bidiCode,
+      ),
+      const _RecipeCard(
         title: 'Copy button',
         blurb:
             'Use flash() for temporary feedback without resizing the button.',
@@ -320,7 +326,102 @@ class _DeclarativePreviewState extends State<_DeclarativePreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 2. flash()
+// 2. RTL / bidi
+// ---------------------------------------------------------------------------
+
+const _bidiCode = '''
+final label = ReelTextController(initialText: 'ETA 12 שלום');
+
+Directionality(
+  textDirection: TextDirection.rtl,
+  child: SizedBox(
+    width: 260,
+    child: ReelText.controller(
+      controller: label,
+      textAlign: TextAlign.start,
+      locale: const Locale('he'),
+    ),
+  ),
+);
+
+// On tap:
+label.set('ETA 09 שלום');''';
+
+class _BidiPreview extends StatefulWidget {
+  const _BidiPreview();
+
+  @override
+  State<_BidiPreview> createState() => _BidiPreviewState();
+}
+
+class _BidiPreviewState extends State<_BidiPreview> {
+  static const _labels = ['ETA 12 שלום', 'ETA 09 שלום', 'DONE 07 שלום'];
+
+  late final ReelTextController _label;
+  var _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _label = ReelTextController(initialText: _labels.first);
+  }
+
+  @override
+  void dispose() {
+    _label.dispose();
+    super.dispose();
+  }
+
+  void _roll() {
+    _index = (_index + 1) % _labels.length;
+    _label.set(
+      _labels[_index],
+      options: const ReelTextOptions(direction: ReelTextDirection.up),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _RecipeMotionSlot(
+          slotKey: const ValueKey('recipe_bidi_motion_slot'),
+          width: 300,
+          height: 62,
+          child: Directionality(
+            key: const ValueKey('recipe_bidi_directionality'),
+            textDirection: TextDirection.rtl,
+            child: SizedBox(
+              width: 260,
+              child: ReelText.controller(
+                key: const ValueKey('recipe_bidi_text'),
+                controller: _label,
+                textAlign: TextAlign.start,
+                locale: const Locale('he'),
+                style: TextStyle(
+                  color: Studio.text,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  height: 1.12,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        StudioButton(
+          onPressed: _roll,
+          filled: false,
+          child: const Text('Roll RTL'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3. flash()
 // ---------------------------------------------------------------------------
 
 const _flashCode = '''
@@ -408,7 +509,7 @@ class _FlashPreviewState extends State<_FlashPreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Async operation
+// 4. Async operation
 // ---------------------------------------------------------------------------
 
 const _asyncCode = '''
@@ -526,7 +627,7 @@ class _AsyncPreviewState extends State<_AsyncPreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Waiting label
+// 5. Waiting label
 // ---------------------------------------------------------------------------
 
 const _waitingCode = '''
@@ -656,7 +757,7 @@ class _WaitingPreviewState extends State<_WaitingPreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Counter
+// 6. Counter
 // ---------------------------------------------------------------------------
 
 const _counterCode = r'''
@@ -755,7 +856,7 @@ class _CounterPreviewState extends State<_CounterPreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 6. Spam-safe button
+// 7. Spam-safe button
 // ---------------------------------------------------------------------------
 
 const _spamSafeCode = '''
