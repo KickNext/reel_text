@@ -14,11 +14,11 @@ class ReelText extends StatefulWidget {
     this.strutStyle,
     this.semanticsLabel,
     this.respectDisableAnimations = true,
-  }) : controller = null,
-       richText = null,
-       _sequenceValues = null,
-       _sequenceInterval = null,
-       _sequenceOptionsBuilder = null;
+  })  : controller = null,
+        richText = null,
+        _sequenceValues = null,
+        _sequenceInterval = null,
+        _sequenceOptionsBuilder = null;
 
   /// Creates a declarative reel text widget from a styled [TextSpan] tree.
   ///
@@ -36,11 +36,11 @@ class ReelText extends StatefulWidget {
     this.strutStyle,
     this.semanticsLabel,
     this.respectDisableAnimations = true,
-  }) : text = null,
-       controller = null,
-       _sequenceValues = null,
-       _sequenceInterval = null,
-       _sequenceOptionsBuilder = null;
+  })  : text = null,
+        controller = null,
+        _sequenceValues = null,
+        _sequenceInterval = null,
+        _sequenceOptionsBuilder = null;
 
   /// Creates an imperative reel text widget driven by [controller].
   const ReelText.controller({
@@ -54,11 +54,11 @@ class ReelText extends StatefulWidget {
     this.strutStyle,
     this.semanticsLabel,
     this.respectDisableAnimations = true,
-  }) : text = null,
-       richText = null,
-       _sequenceValues = null,
-       _sequenceInterval = null,
-       _sequenceOptionsBuilder = null;
+  })  : text = null,
+        richText = null,
+        _sequenceValues = null,
+        _sequenceInterval = null,
+        _sequenceOptionsBuilder = null;
 
   /// Creates a reel text widget that cycles through [values] on [interval].
   ///
@@ -77,12 +77,12 @@ class ReelText extends StatefulWidget {
     this.strutStyle,
     this.semanticsLabel,
     this.respectDisableAnimations = true,
-  }) : text = null,
-       richText = null,
-       controller = null,
-       _sequenceValues = values,
-       _sequenceInterval = interval,
-       _sequenceOptionsBuilder = optionsBuilder;
+  })  : text = null,
+        richText = null,
+        controller = null,
+        _sequenceValues = values,
+        _sequenceInterval = interval,
+        _sequenceOptionsBuilder = optionsBuilder;
 
   /// Target text in declarative mode.
   final String? text;
@@ -256,7 +256,7 @@ class _ReelTextState extends State<ReelText>
       final value = values[_sequenceIndex];
       final options =
           widget._sequenceOptionsBuilder?.call(_sequenceIndex, value) ??
-          widget.options;
+              widget.options;
       _rollTo(value, options);
     });
   }
@@ -362,8 +362,7 @@ class _ReelTextState extends State<ReelText>
 
   @override
   Widget build(BuildContext context) {
-    final direction =
-        widget.textDirection ??
+    final direction = widget.textDirection ??
         Directionality.maybeOf(context) ??
         TextDirection.ltr;
     final defaultTextStyle = DefaultTextStyle.of(context);
@@ -372,9 +371,8 @@ class _ReelTextState extends State<ReelText>
     final effectiveTextAlign =
         widget.textAlign ?? defaultTextStyle.textAlign ?? TextAlign.start;
     final visibleText = _targetText ?? _displayedText;
-    final visibleRichText = _targetText == null
-        ? _displayedRichText
-        : _targetRichText;
+    final visibleRichText =
+        _targetText == null ? _displayedRichText : _targetRichText;
     final visibleContent = _contentFor(visibleText, visibleRichText, style);
     final visibleSemanticsText = _semanticsTextFor(
       visibleText,
@@ -413,7 +411,7 @@ class _ReelTextState extends State<ReelText>
       final height = math.max(fromMetrics.height, toMetrics.height);
       final anchorShrinkingRight =
           _alignsToRight(effectiveTextAlign, direction) &&
-          toMetrics.width < fromMetrics.width;
+              toMetrics.width < fromMetrics.width;
       child = AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
@@ -421,24 +419,36 @@ class _ReelTextState extends State<ReelText>
               _controller.value * plan.totalDuration.inMilliseconds;
           final width = _rollingWidth(plan, fromMetrics, toMetrics, progressMs);
           final viewportWidth = anchorShrinkingRight ? toMetrics.width : width;
-          final rollingRow = Row(
+          final rollingRun = SizedBox(
             key: const ValueKey('reel_text_rolling'),
-            mainAxisSize: MainAxisSize.min,
-            textDirection: direction,
-            children: [
-              for (final slot in plan.slots)
-                _GlyphSlot(
-                  slot: slot,
-                  fromMetrics: fromMetrics,
-                  toMetrics: toMetrics,
-                  fromContent: fromContent,
-                  toContent: toContent,
-                  progressMs: progressMs,
-                  textDirection: direction,
-                  locale: widget.locale,
-                  strutStyle: widget.strutStyle,
-                ),
-            ],
+            width: width,
+            height: height,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                for (final slot in plan.slots)
+                  Positioned(
+                    left: _rollingLeft(
+                      slot,
+                      fromMetrics,
+                      toMetrics,
+                      progressMs,
+                    ),
+                    top: 0,
+                    child: _GlyphSlot(
+                      slot: slot,
+                      fromMetrics: fromMetrics,
+                      toMetrics: toMetrics,
+                      fromContent: fromContent,
+                      toContent: toContent,
+                      progressMs: progressMs,
+                      textDirection: direction,
+                      locale: widget.locale,
+                      strutStyle: widget.strutStyle,
+                    ),
+                  ),
+              ],
+            ),
           );
           return SizedBox(
             width: viewportWidth,
@@ -451,7 +461,7 @@ class _ReelTextState extends State<ReelText>
               maxWidth: double.infinity,
               minHeight: height,
               maxHeight: height,
-              child: rollingRow,
+              child: rollingRun,
             ),
           );
         },
@@ -512,16 +522,43 @@ class _ReelTextState extends State<ReelText>
     _TextRunMetrics toMetrics,
     double progressMs,
   ) {
-    return plan.slots.fold<double>(0, (sum, slot) {
-      final fromWidth = slot.from.isEmpty
-          ? 0.0
-          : fromMetrics.widthAt(slot.index);
-      final toWidth = slot.to.isEmpty ? 0.0 : toMetrics.widthAt(slot.index);
-      if (!slot.changed) {
-        return sum + toWidth;
-      }
-      return sum + ui.lerpDouble(fromWidth, toWidth, slot.widthT(progressMs))!;
+    return plan.slots.fold<double>(0, (right, slot) {
+      final left = _rollingLeft(slot, fromMetrics, toMetrics, progressMs);
+      final width = _rollingSlotWidth(slot, fromMetrics, toMetrics, progressMs);
+      return math.max(right, left + width);
     });
+  }
+
+  double _rollingLeft(
+    _SlotPlan slot,
+    _TextRunMetrics fromMetrics,
+    _TextRunMetrics toMetrics,
+    double progressMs,
+  ) {
+    final fromLeft = slot.from.isEmpty
+        ? toMetrics.leftAt(slot.index)
+        : fromMetrics.leftAt(slot.index);
+    final toLeft = slot.to.isEmpty
+        ? fromMetrics.leftAt(slot.index)
+        : toMetrics.leftAt(slot.index);
+    if (!slot.changed) {
+      return toLeft;
+    }
+    return ui.lerpDouble(fromLeft, toLeft, slot.widthT(progressMs))!;
+  }
+
+  double _rollingSlotWidth(
+    _SlotPlan slot,
+    _TextRunMetrics fromMetrics,
+    _TextRunMetrics toMetrics,
+    double progressMs,
+  ) {
+    final fromWidth = slot.from.isEmpty ? 0.0 : fromMetrics.widthAt(slot.index);
+    final toWidth = slot.to.isEmpty ? 0.0 : toMetrics.widthAt(slot.index);
+    if (!slot.changed) {
+      return toWidth;
+    }
+    return ui.lerpDouble(fromWidth, toWidth, slot.widthT(progressMs))!;
   }
 }
 

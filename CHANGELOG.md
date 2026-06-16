@@ -8,8 +8,10 @@
   widget-level `semanticsLabel` override is provided.
 - Fixed glyph width measurement for mixed RTL/LTR bidi labels so internal slot
   widths cannot become negative.
+- Fixed mixed bidi visual ordering so left-to-right runs stay readable inside
+  right-to-left labels during settled and rolling states.
 - Added RTL, mixed bidi, and locale layout regression coverage.
-- Added an example RTL script recipe for visually checking right-to-left rolls.
+- Added an example mixed bidi recipe for visually checking RTL/LTR rolls.
 
 ## 0.1.3
 

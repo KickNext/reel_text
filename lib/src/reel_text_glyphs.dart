@@ -24,22 +24,29 @@ class _SettledReelText extends StatelessWidget {
       strutStyle: strutStyle,
       text: content.plainText,
     );
-    final glyphRow = Row(
+    final glyphRun = SizedBox(
       key: const ValueKey('reel_text_settled_glyphs'),
-      mainAxisSize: MainAxisSize.min,
-      textDirection: textDirection,
-      children: [
-        for (final (index, glyph) in content.glyphs.indexed)
-          _SettledGlyphSlot(
-            glyph.text,
-            width: runMetrics.widthAt(index),
-            height: runMetrics.height,
-            style: glyph.style,
-            textDirection: textDirection,
-            locale: locale,
-            strutStyle: strutStyle,
-          ),
-      ],
+      width: runMetrics.width,
+      height: runMetrics.height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (final (index, glyph) in content.glyphs.indexed)
+            Positioned(
+              left: runMetrics.leftAt(index),
+              top: 0,
+              child: _SettledGlyphSlot(
+                glyph.text,
+                width: runMetrics.widthAt(index),
+                height: runMetrics.height,
+                style: glyph.style,
+                textDirection: textDirection,
+                locale: locale,
+                strutStyle: strutStyle,
+              ),
+            ),
+        ],
+      ),
     );
 
     return LayoutBuilder(
@@ -56,7 +63,7 @@ class _SettledReelText extends StatelessWidget {
             maxWidth: double.infinity,
             minHeight: runMetrics.height,
             maxHeight: runMetrics.height,
-            child: glyphRow,
+            child: glyphRun,
           ),
         );
       },
@@ -162,8 +169,7 @@ class _GlyphSlot extends StatelessWidget {
       metrics.toWidth,
       slot.widthT(progressMs),
     )!;
-    final textColor =
-        effectiveToStyle.color ??
+    final textColor = effectiveToStyle.color ??
         DefaultTextStyle.of(context).style.color ??
         Colors.black;
     final incomingColor = slot.color == null
