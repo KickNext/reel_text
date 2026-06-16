@@ -22,12 +22,6 @@ class RecipesPage extends StatelessWidget {
         code: _declarativeCode,
       ),
       const _RecipeCard(
-        title: 'RTL script',
-        blurb: 'Right-to-left labels roll through full words without jumping.',
-        preview: _RtlPreview(),
-        code: _rtlCode,
-      ),
-      const _RecipeCard(
         title: 'Copy button',
         blurb:
             'Use flash() for temporary feedback without resizing the button.',
@@ -58,6 +52,12 @@ class RecipesPage extends StatelessWidget {
             'interrupt: false queues the latest target instead of thrashing.',
         preview: _SpamSafePreview(),
         code: _spamSafeCode,
+      ),
+      const _RecipeCard(
+        title: 'RTL script',
+        blurb: 'Right-to-left labels roll through full words without jumping.',
+        preview: _RtlPreview(),
+        code: _rtlCode,
       ),
     ];
 
@@ -326,106 +326,7 @@ class _DeclarativePreviewState extends State<_DeclarativePreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 2. RTL script
-// ---------------------------------------------------------------------------
-
-const _rtlCode = '''
-final label = ReelTextController(initialText: 'משלוח בדרך ליעד');
-
-Directionality(
-  textDirection: TextDirection.rtl,
-  child: SizedBox(
-    width: 260,
-    child: ReelText.controller(
-      controller: label,
-      textAlign: TextAlign.start,
-      locale: const Locale('he'),
-    ),
-  ),
-);
-
-// On tap:
-label.set('עדכון מסלול צפוני');''';
-
-class _RtlPreview extends StatefulWidget {
-  const _RtlPreview();
-
-  @override
-  State<_RtlPreview> createState() => _RtlPreviewState();
-}
-
-class _RtlPreviewState extends State<_RtlPreview> {
-  static const _labels = [
-    'משלוח בדרך ליעד',
-    'עדכון מסלול צפוני',
-    'הגעה בעוד רגעים',
-  ];
-
-  late final ReelTextController _label;
-  var _index = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _label = ReelTextController(initialText: _labels.first);
-  }
-
-  @override
-  void dispose() {
-    _label.dispose();
-    super.dispose();
-  }
-
-  void _roll() {
-    _index = (_index + 1) % _labels.length;
-    _label.set(
-      _labels[_index],
-      options: const ReelTextOptions(direction: ReelTextDirection.up),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _RecipeMotionSlot(
-          slotKey: const ValueKey('recipe_rtl_motion_slot'),
-          width: 300,
-          height: 62,
-          child: Directionality(
-            key: const ValueKey('recipe_rtl_directionality'),
-            textDirection: TextDirection.rtl,
-            child: SizedBox(
-              width: 260,
-              child: ReelText.controller(
-                key: const ValueKey('recipe_rtl_text'),
-                controller: _label,
-                textAlign: TextAlign.start,
-                locale: const Locale('he'),
-                style: TextStyle(
-                  color: Studio.text,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  height: 1.12,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        StudioButton(
-          onPressed: _roll,
-          filled: false,
-          child: const Text('Roll RTL'),
-        ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 3. flash()
+// 2. flash()
 // ---------------------------------------------------------------------------
 
 const _flashCode = '''
@@ -513,7 +414,7 @@ class _FlashPreviewState extends State<_FlashPreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Async operation
+// 3. Async operation
 // ---------------------------------------------------------------------------
 
 const _asyncCode = '''
@@ -631,7 +532,7 @@ class _AsyncPreviewState extends State<_AsyncPreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Waiting label
+// 4. Waiting label
 // ---------------------------------------------------------------------------
 
 const _waitingCode = '''
@@ -761,7 +662,7 @@ class _WaitingPreviewState extends State<_WaitingPreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 6. Counter
+// 5. Counter
 // ---------------------------------------------------------------------------
 
 const _counterCode = r'''
@@ -860,7 +761,7 @@ class _CounterPreviewState extends State<_CounterPreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Spam-safe button
+// 6. Spam-safe button
 // ---------------------------------------------------------------------------
 
 const _spamSafeCode = '''
@@ -926,6 +827,105 @@ class _SpamSafePreviewState extends State<_SpamSafePreview> {
           options: const ReelTextOptions(interrupt: false),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 7. RTL script
+// ---------------------------------------------------------------------------
+
+const _rtlCode = '''
+final label = ReelTextController(initialText: 'משלוח בדרך ליעד');
+
+Directionality(
+  textDirection: TextDirection.rtl,
+  child: SizedBox(
+    width: 260,
+    child: ReelText.controller(
+      controller: label,
+      textAlign: TextAlign.start,
+      locale: const Locale('he'),
+    ),
+  ),
+);
+
+// On tap:
+label.set('עדכון מסלול צפוני');''';
+
+class _RtlPreview extends StatefulWidget {
+  const _RtlPreview();
+
+  @override
+  State<_RtlPreview> createState() => _RtlPreviewState();
+}
+
+class _RtlPreviewState extends State<_RtlPreview> {
+  static const _labels = [
+    'משלוח בדרך ליעד',
+    'עדכון מסלול צפוני',
+    'הגעה בעוד רגעים',
+  ];
+
+  late final ReelTextController _label;
+  var _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _label = ReelTextController(initialText: _labels.first);
+  }
+
+  @override
+  void dispose() {
+    _label.dispose();
+    super.dispose();
+  }
+
+  void _roll() {
+    _index = (_index + 1) % _labels.length;
+    _label.set(
+      _labels[_index],
+      options: const ReelTextOptions(direction: ReelTextDirection.up),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _RecipeMotionSlot(
+          slotKey: const ValueKey('recipe_rtl_motion_slot'),
+          width: 300,
+          height: 62,
+          child: Directionality(
+            key: const ValueKey('recipe_rtl_directionality'),
+            textDirection: TextDirection.rtl,
+            child: SizedBox(
+              width: 260,
+              child: ReelText.controller(
+                key: const ValueKey('recipe_rtl_text'),
+                controller: _label,
+                textAlign: TextAlign.start,
+                locale: const Locale('he'),
+                style: TextStyle(
+                  color: Studio.text,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  height: 1.12,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        StudioButton(
+          onPressed: _roll,
+          filled: false,
+          child: const Text('Roll RTL'),
+        ),
+      ],
     );
   }
 }
