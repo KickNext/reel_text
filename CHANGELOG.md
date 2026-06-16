@@ -1,3 +1,12 @@
+## Unreleased
+
+- Added accessibility guideline coverage for the example app across desktop and
+  mobile Home, Recipes, and Editor layouts.
+- Improved example tap targets, semantic labels, and text-scale resilience for
+  top navigation, metadata links, recipe controls, and editor controls.
+- Made `ReelText.rich` respect nested `TextSpan.semanticsLabel` values unless a
+  widget-level `semanticsLabel` override is provided.
+
 ## 0.1.3
 
 - Fixed `DefaultTextStyle.textAlign` inheritance so `ReelText` follows Flutter

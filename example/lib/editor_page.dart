@@ -441,7 +441,7 @@ class _ControlsPanel extends StatelessWidget {
               Expanded(
                 child: SizedBox(
                   key: const ValueKey('editor_target_input_frame'),
-                  height: 42,
+                  height: 48,
                   child: TextField(
                     key: const ValueKey('editor_target_input'),
                     controller: target,
@@ -466,7 +466,7 @@ class _ControlsPanel extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               SizedBox(
-                height: 42,
+                height: 48,
                 child: FilledButton(
                   key: const ValueKey('editor_apply_button'),
                   onPressed: () => onApply(null),

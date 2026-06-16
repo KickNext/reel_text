@@ -605,6 +605,38 @@ void main() {
     expect(paragraph.registrar, isNotNull);
   });
 
+  testWidgets('rich text uses TextSpan semantics labels', (tester) async {
+    const visibleText = 'ETA';
+    const semanticsText = 'estimated arrival';
+    const span = TextSpan(text: visibleText, semanticsLabel: semanticsText);
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.rich(span),
+      ),
+    );
+
+    expect(find.bySemanticsLabel(semanticsText), findsOneWidget);
+    expect(find.bySemanticsLabel(visibleText), findsNothing);
+  });
+
+  testWidgets('explicit semanticsLabel overrides rich text semantics', (
+    tester,
+  ) async {
+    const span = TextSpan(text: 'ETA', semanticsLabel: 'estimated arrival');
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.rich(span, semanticsLabel: 'delivery estimate'),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('delivery estimate'), findsOneWidget);
+    expect(find.bySemanticsLabel('estimated arrival'), findsNothing);
+  });
+
   testWidgets('editing controller renders replacements inside EditableText', (
     tester,
   ) async {

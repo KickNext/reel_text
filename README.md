@@ -241,6 +241,10 @@ ReelText.rich(
 `ReelText.rich` supports `TextSpan` trees. `WidgetSpan` is not supported because
 the widget splits text into measured rolling grapheme clusters.
 
+Screen readers get one semantic label for the current value. For rich text,
+`TextSpan.semanticsLabel` is respected; pass `semanticsLabel` to `ReelText` when
+the whole rolling label needs a custom spoken value.
+
 Because each grapheme cluster gets its own measured slot, Flutter still owns
 the font metrics and emoji clusters, but text shaping is not identical to one
 continuous `Text` run in every script. Latin kerning pairs and ligatures may
@@ -280,12 +284,16 @@ previews the committed string, and `commitReplacements()` or
 must not overlap. Pass `spanBuilder` to customize the resting text span without
 subclassing the controller.
 
-## Reduced motion
+## Accessibility and reduced motion
 
 When the platform requests reduced motion
 (`MediaQuery.disableAnimationsOf(context)`), `ReelText` snaps to the target
 text instantly instead of rolling. Opt out per widget with
 `respectDisableAnimations: false`.
+
+The example app has widget coverage for Flutter's Android/iOS tap target,
+labeled target, and text contrast guidelines across desktop and mobile layouts,
+plus a smoke test at 200% text scaling.
 
 ## Dynamic fonts
 

@@ -115,7 +115,10 @@ class ReelText extends StatefulWidget {
   /// Strut style.
   final StrutStyle? strutStyle;
 
-  /// Accessibility label. Defaults to the current value.
+  /// Accessibility label.
+  ///
+  /// Defaults to the current plain value. In [ReelText.rich], nested
+  /// [TextSpan.semanticsLabel] values are used unless this override is set.
   final String? semanticsLabel;
 
   /// Snaps to the target text without rolling when the platform requests
@@ -373,6 +376,10 @@ class _ReelTextState extends State<ReelText>
         ? _displayedRichText
         : _targetRichText;
     final visibleContent = _contentFor(visibleText, visibleRichText, style);
+    final visibleSemanticsText = _semanticsTextFor(
+      visibleText,
+      visibleRichText,
+    );
     final plan = _plan;
 
     Widget child;
@@ -458,7 +465,7 @@ class _ReelTextState extends State<ReelText>
     );
 
     return Semantics(
-      label: widget.semanticsLabel ?? visibleText,
+      label: widget.semanticsLabel ?? visibleSemanticsText,
       child: _ReelTextSelection(
         content: visibleContent,
         textAlign: effectiveTextAlign,
@@ -467,6 +474,16 @@ class _ReelTextState extends State<ReelText>
         strutStyle: widget.strutStyle,
         child: child,
       ),
+    );
+  }
+
+  String _semanticsTextFor(String text, InlineSpan? richText) {
+    if (richText == null) {
+      return text;
+    }
+    return richText.toPlainText(
+      includeSemanticsLabels: true,
+      includePlaceholders: false,
     );
   }
 

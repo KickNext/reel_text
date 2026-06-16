@@ -256,7 +256,7 @@ class _HeroStageState extends State<HeroStage> with TickerProviderStateMixin {
     final acts = _buildActs();
     final minHeight = compact
         ? 250.0
-        : math.max(widget.viewportHeight * 0.32, 400.0);
+        : math.max(widget.viewportHeight * 0.32, 408.0);
     final activeAct = _activeActIndex;
 
     return SizedBox(
@@ -502,6 +502,7 @@ class _StageNav extends StatelessWidget {
             if (i > 0) const SizedBox(width: 6),
             _StageNavDot(
               key: ValueKey('stage_nav_${acts[i].tag.toLowerCase()}'),
+              label: acts[i].tag,
               accent: acts[i].accent,
               active: i == index,
               progress: progress,
@@ -535,12 +536,14 @@ class _StageNav extends StatelessWidget {
 class _StageNavDot extends StatelessWidget {
   const _StageNavDot({
     super.key,
+    required this.label,
     required this.accent,
     required this.active,
     required this.progress,
     required this.onTap,
   });
 
+  final String label;
   final Color accent;
   final bool active;
   final AnimationController progress;
@@ -548,40 +551,52 @@ class _StageNavDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-        child: active
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: SizedBox(
-                  width: 30,
-                  height: 6,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: ColoredBox(color: Studio.border)),
-                      AnimatedBuilder(
-                        animation: progress,
-                        builder: (context, _) => FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: progress.value.clamp(0.0, 1.0),
-                          child: ColoredBox(color: accent),
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            child: Center(
+              child: active
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: SizedBox(
+                        width: 30,
+                        height: 6,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: ColoredBox(color: Studio.border),
+                            ),
+                            AnimatedBuilder(
+                              animation: progress,
+                              builder: (context, _) => FractionallySizedBox(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: progress.value.clamp(0.0, 1.0),
+                                child: ColoredBox(color: accent),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              )
-            : Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: Studio.faint,
-                  shape: BoxShape.circle,
-                ),
-              ),
+                    )
+                  : Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: Studio.faint,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -604,50 +619,62 @@ class _StageNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = active ? act.accent : Studio.faint;
-    return InkWell(
+    return Semantics(
+      button: true,
+      selected: active,
+      label: act.tag,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-        child: SizedBox(
-          width: 70,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                act.tag,
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                softWrap: false,
-                style: Studio.mono(
-                  size: 9.5,
-                  color: color,
-                  weight: FontWeight.w700,
-                  letterSpacing: 1.6,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: SizedBox(
-                  height: 3,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: ColoredBox(color: Studio.border)),
-                      if (active)
-                        AnimatedBuilder(
-                          animation: progress,
-                          builder: (context, _) => FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: progress.value.clamp(0.0, 1.0),
-                            child: ColoredBox(color: act.accent),
-                          ),
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 78, minHeight: 48),
+            child: Center(
+              child: SizedBox(
+                width: 70,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      act.tag,
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      softWrap: false,
+                      style: Studio.mono(
+                        size: 9.5,
+                        color: color,
+                        weight: FontWeight.w700,
+                        letterSpacing: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: SizedBox(
+                        height: 3,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: ColoredBox(color: Studio.border),
+                            ),
+                            if (active)
+                              AnimatedBuilder(
+                                animation: progress,
+                                builder: (context, _) => FractionallySizedBox(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: progress.value.clamp(0.0, 1.0),
+                                  child: ColoredBox(color: act.accent),
+                                ),
+                              ),
+                          ],
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

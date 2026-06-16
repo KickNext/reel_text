@@ -462,7 +462,7 @@ class _TopBarState extends State<_TopBar> {
                       ],
                     )
                   : SizedBox(
-                      height: 44,
+                      height: 56,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
@@ -497,29 +497,38 @@ class _ThemeToggleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLight = brightness == Brightness.light;
-    return Tooltip(
-      message: isLight ? 'Switch to dark theme' : 'Switch to light theme',
-      child: Material(
-        color: Studio.inset,
-        borderRadius: BorderRadius.circular(999),
-        child: InkWell(
-          key: const ValueKey('theme_toggle_button'),
-          onTap: () => onChanged(isLight ? Brightness.dark : Brightness.light),
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            height: compact ? 36 : 38,
-            width: compact ? 38 : 42,
-            decoration: BoxDecoration(
+    final label = isLight ? 'Switch to dark theme' : 'Switch to light theme';
+    void toggle() => onChanged(isLight ? Brightness.dark : Brightness.light);
+    return Semantics(
+      button: true,
+      label: label,
+      onTap: toggle,
+      child: ExcludeSemantics(
+        child: Tooltip(
+          message: label,
+          child: Material(
+            color: Studio.inset,
+            borderRadius: BorderRadius.circular(999),
+            child: InkWell(
+              key: const ValueKey('theme_toggle_button'),
+              onTap: toggle,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: Studio.borderBright.withValues(alpha: 0.56),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 48,
+                width: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Studio.borderBright.withValues(alpha: 0.56),
+                  ),
+                ),
+                child: Icon(
+                  isLight ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  size: compact ? 16 : 17,
+                  color: Studio.text,
+                ),
               ),
-            ),
-            child: Icon(
-              isLight ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-              size: compact ? 16 : 17,
-              color: Studio.text,
             ),
           ),
         ),
@@ -603,35 +612,37 @@ class _PageTab extends StatelessWidget {
       button: true,
       selected: selected,
       label: label,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            color: selected
-                ? Studio.text.withValues(alpha: 0.94)
-                : Studio.transparent,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected
-                  ? Studio.white.withValues(alpha: 0.18)
-                  : Studio.transparent,
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            decoration: BoxDecoration(
+              color: selected ? Studio.primary : Studio.transparent,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: selected ? Studio.primary : Studio.transparent,
+              ),
             ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.fade,
-              softWrap: false,
-              style: Studio.mono(
-                size: 10.5,
-                color: selected ? Studio.onAccent(Studio.text) : Studio.muted,
-                weight: FontWeight.w800,
-                letterSpacing: 0.7,
+            child: Center(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+                style: Studio.mono(
+                  size: 10.5,
+                  color: selected
+                      ? Studio.onAccent(Studio.primary)
+                      : Studio.text,
+                  weight: FontWeight.w800,
+                  letterSpacing: 0.7,
+                ),
               ),
             ),
           ),
@@ -724,65 +735,68 @@ class _MetricLinkButton extends StatelessWidget {
       child: Semantics(
         button: true,
         label: '$tooltip, $count $label',
-        child: Material(
-          color: Studio.inset,
-          borderRadius: BorderRadius.circular(999),
-          child: InkWell(
-            key: buttonKey,
-            onTap: onPressed,
+        onTap: onPressed,
+        child: ExcludeSemantics(
+          child: Material(
+            color: Studio.inset,
             borderRadius: BorderRadius.circular(999),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              height: 38,
-              padding: EdgeInsets.only(left: 11, right: compact ? 11 : 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: Studio.borderBright.withValues(alpha: 0.56),
+            child: InkWell(
+              key: buttonKey,
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(999),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 48,
+                padding: EdgeInsets.only(left: 11, right: compact ? 11 : 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Studio.borderBright.withValues(alpha: 0.56),
+                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SvgPicture.asset(
-                    assetName,
-                    key: iconKey,
-                    width: 17,
-                    height: 17,
-                    colorFilter: colorize
-                        ? ColorFilter.mode(Studio.text, BlendMode.srcIn)
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  ReelText(
-                    count,
-                    key: metricKey,
-                    options: ReelTextOptions(
-                      direction: ReelTextDirection.up,
-                      duration: const Duration(milliseconds: 260),
-                      stagger: const Duration(milliseconds: 18),
-                      color: Studio.primary,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SvgPicture.asset(
+                      assetName,
+                      key: iconKey,
+                      width: 17,
+                      height: 17,
+                      colorFilter: colorize
+                          ? ColorFilter.mode(Studio.text, BlendMode.srcIn)
+                          : null,
                     ),
-                    style: Studio.mono(
-                      size: 11,
-                      color: Studio.text,
-                      weight: FontWeight.w800,
-                      height: 1,
-                    ),
-                  ),
-                  if (!compact) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      label,
+                    const SizedBox(width: 8),
+                    ReelText(
+                      count,
+                      key: metricKey,
+                      options: ReelTextOptions(
+                        direction: ReelTextDirection.up,
+                        duration: const Duration(milliseconds: 260),
+                        stagger: const Duration(milliseconds: 18),
+                        color: Studio.primary,
+                      ),
                       style: Studio.mono(
-                        size: 10,
-                        color: Studio.faint,
-                        weight: FontWeight.w700,
+                        size: 11,
+                        color: Studio.text,
+                        weight: FontWeight.w800,
                         height: 1,
                       ),
                     ),
+                    if (!compact) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        label,
+                        style: Studio.mono(
+                          size: 10,
+                          color: Studio.faint,
+                          weight: FontWeight.w700,
+                          height: 1,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

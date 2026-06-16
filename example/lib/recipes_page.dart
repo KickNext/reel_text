@@ -182,17 +182,19 @@ class _RecipeReelButton extends StatelessWidget {
     required this.onPressed,
     required this.controller,
     required this.icon,
+    required this.semanticsLabel,
     required this.labelWidth,
     required this.slotKey,
     this.buttonKey,
     this.accent,
   });
 
-  static const height = 44.0;
+  static const height = 48.0;
 
   final VoidCallback onPressed;
   final ReelTextController controller;
   final IconData icon;
+  final String semanticsLabel;
   final double labelWidth;
   final Key slotKey;
   final Key? buttonKey;
@@ -202,40 +204,47 @@ class _RecipeReelButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final fill = accent ?? Studio.primary;
     final foreground = Studio.onAccent(fill);
-    return Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          key: buttonKey,
-          height: height,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 16, color: foreground),
-                const SizedBox(width: 8),
-                _RecipeMotionSlot(
-                  slotKey: slotKey,
-                  width: labelWidth,
-                  height: height,
-                  child: ReelText.controller(
-                    controller: controller,
-                    style: Studio.mono(
-                      size: 12.5,
-                      color: foreground,
-                      weight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      height: Studio.compactLabelLineHeight,
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      onTap: onPressed,
+      child: ExcludeSemantics(
+        child: Material(
+          color: fill,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              key: buttonKey,
+              height: height,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 16, color: foreground),
+                    const SizedBox(width: 8),
+                    _RecipeMotionSlot(
+                      slotKey: slotKey,
+                      width: labelWidth,
+                      height: height,
+                      child: ReelText.controller(
+                        controller: controller,
+                        style: Studio.mono(
+                          size: 12.5,
+                          color: foreground,
+                          weight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          height: Studio.compactLabelLineHeight,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -370,6 +379,7 @@ class _FlashPreviewState extends State<_FlashPreview> {
       slotKey: const ValueKey('recipe_flash_motion_slot'),
       controller: _label,
       icon: Icons.copy_rounded,
+      semanticsLabel: 'Copy',
       labelWidth: 58,
       onPressed: () {
         _label.flash(
@@ -708,6 +718,7 @@ class _CounterPreviewState extends State<_CounterPreview> {
           alignment: WrapAlignment.center,
           children: [
             IconButton.outlined(
+              tooltip: 'Decrease counter',
               onPressed: () => setState(() {
                 _count -= 1;
                 _up = false;
@@ -719,6 +730,7 @@ class _CounterPreviewState extends State<_CounterPreview> {
               icon: const Icon(Icons.remove_rounded),
             ),
             IconButton.outlined(
+              tooltip: 'Increase counter',
               onPressed: () => setState(() {
                 _count += 1;
                 _up = true;
@@ -794,6 +806,7 @@ class _SpamSafePreviewState extends State<_SpamSafePreview> {
       controller: _label,
       accent: Studio.danger,
       icon: Icons.favorite_rounded,
+      semanticsLabel: 'Like',
       labelWidth: 46,
       onPressed: () {
         _liked = !_liked;

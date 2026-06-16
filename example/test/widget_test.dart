@@ -234,6 +234,123 @@ void main() {
     expect(Studio.isLight, isTrue);
   });
 
+  testWidgets('home page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('editor page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_editor')));
+    await tester.pumpAndSettle();
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('recipes page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_recipes')));
+    await tester.pumpAndSettle();
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('mobile home page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('mobile recipes page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_recipes')));
+    await tester.pumpAndSettle();
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('mobile editor page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_editor')));
+    await tester.pumpAndSettle();
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('primary pages tolerate 200 percent text scaling', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(() {
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+      tester.binding.setSurfaceSize(null);
+    });
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const ValueKey('page_tab_recipes')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const ValueKey('page_tab_editor')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'intro uses one line: empty, package name, package version, labels',
     (tester) async {
@@ -552,7 +669,7 @@ void main() {
       recipesList,
       const Offset(0, -120),
     );
-    expect(slotHeight('recipe_flash_motion_slot'), 44);
+    expect(slotHeight('recipe_flash_motion_slot'), 48);
     expect(
       tester
           .widget<ReelText>(
@@ -567,7 +684,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('recipe_flash_button'))).height,
-      44,
+      48,
     );
 
     await tester.dragUntilVisible(
@@ -599,10 +716,10 @@ void main() {
       const Offset(0, -120),
     );
     expect(find.text('Spam-safe tap'), findsOneWidget);
-    expect(slotHeight('recipe_spam_motion_slot'), 44);
+    expect(slotHeight('recipe_spam_motion_slot'), 48);
     expect(
       tester.getSize(find.byKey(const ValueKey('recipe_spam_button'))).height,
-      44,
+      48,
     );
 
     await tester.dragUntilVisible(
@@ -638,8 +755,8 @@ void main() {
     expect(input, findsOneWidget);
     final inputFrame = find.byKey(const ValueKey('editor_target_input_frame'));
     final applyButton = find.byKey(const ValueKey('editor_apply_button'));
-    expect(tester.getSize(inputFrame).height, 42);
-    expect(tester.getSize(applyButton).height, 42);
+    expect(tester.getSize(inputFrame).height, 48);
+    expect(tester.getSize(applyButton).height, 48);
     expect(
       tester.getCenter(inputFrame).dy,
       closeTo(tester.getCenter(applyButton).dy, 0.1),
@@ -828,6 +945,13 @@ Future<void> _expectFooter(WidgetTester tester) async {
   expect(find.text(versionLabel), findsOneWidget);
   expect(find.text('MIT'), findsOneWidget);
   expect(find.text(_footerYearLabel()), findsOneWidget);
+}
+
+Future<void> _expectAccessibilityGuidelines(WidgetTester tester) async {
+  await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+  await expectLater(tester, meetsGuideline(iOSTapTargetGuideline));
+  await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+  await expectLater(tester, meetsGuideline(textContrastGuideline));
 }
 
 Color? _panelColor(WidgetTester tester, String key) {
