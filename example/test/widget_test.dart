@@ -665,21 +665,21 @@ void main() {
     expect(find.byKey(const ValueKey('reel_text_rolling')), findsWidgets);
 
     await tester.dragUntilVisible(
-      find.byKey(const ValueKey('recipe_bidi_motion_slot')),
+      find.byKey(const ValueKey('recipe_rtl_motion_slot')),
       recipesList,
       const Offset(0, -120),
     );
-    expect(slotHeight('recipe_bidi_motion_slot'), 62);
+    expect(slotHeight('recipe_rtl_motion_slot'), 62);
     expect(
       tester
           .widget<Directionality>(
-            find.byKey(const ValueKey('recipe_bidi_directionality')),
+            find.byKey(const ValueKey('recipe_rtl_directionality')),
           )
           .textDirection,
       TextDirection.rtl,
     );
     final bidiText = tester.widget<ReelText>(
-      find.byKey(const ValueKey('recipe_bidi_text')),
+      find.byKey(const ValueKey('recipe_rtl_text')),
     );
     expect(bidiText.textAlign, TextAlign.start);
     expect(bidiText.locale, const Locale('he'));
@@ -693,7 +693,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(
       find.descendant(
-        of: find.byKey(const ValueKey('recipe_bidi_motion_slot')),
+        of: find.byKey(const ValueKey('recipe_rtl_motion_slot')),
         matching: find.byKey(const ValueKey('reel_text_rolling')),
       ),
       findsWidgets,

@@ -22,10 +22,10 @@ class RecipesPage extends StatelessWidget {
         code: _declarativeCode,
       ),
       const _RecipeCard(
-        title: 'RTL / bidi',
-        blurb: 'Mixed left-to-right tokens roll inside a right-to-left line.',
-        preview: _BidiPreview(),
-        code: _bidiCode,
+        title: 'RTL script',
+        blurb: 'Right-to-left labels roll through full words without jumping.',
+        preview: _RtlPreview(),
+        code: _rtlCode,
       ),
       const _RecipeCard(
         title: 'Copy button',
@@ -326,11 +326,11 @@ class _DeclarativePreviewState extends State<_DeclarativePreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 2. RTL / bidi
+// 2. RTL script
 // ---------------------------------------------------------------------------
 
-const _bidiCode = '''
-final label = ReelTextController(initialText: 'ETA 12 שלום');
+const _rtlCode = '''
+final label = ReelTextController(initialText: 'משלוח בדרך ליעד');
 
 Directionality(
   textDirection: TextDirection.rtl,
@@ -345,17 +345,21 @@ Directionality(
 );
 
 // On tap:
-label.set('ETA 09 שלום');''';
+label.set('עדכון מסלול צפוני');''';
 
-class _BidiPreview extends StatefulWidget {
-  const _BidiPreview();
+class _RtlPreview extends StatefulWidget {
+  const _RtlPreview();
 
   @override
-  State<_BidiPreview> createState() => _BidiPreviewState();
+  State<_RtlPreview> createState() => _RtlPreviewState();
 }
 
-class _BidiPreviewState extends State<_BidiPreview> {
-  static const _labels = ['ETA 12 שלום', 'ETA 09 שלום', 'DONE 07 שלום'];
+class _RtlPreviewState extends State<_RtlPreview> {
+  static const _labels = [
+    'משלוח בדרך ליעד',
+    'עדכון מסלול צפוני',
+    'הגעה בעוד רגעים',
+  ];
 
   late final ReelTextController _label;
   var _index = 0;
@@ -386,16 +390,16 @@ class _BidiPreviewState extends State<_BidiPreview> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _RecipeMotionSlot(
-          slotKey: const ValueKey('recipe_bidi_motion_slot'),
+          slotKey: const ValueKey('recipe_rtl_motion_slot'),
           width: 300,
           height: 62,
           child: Directionality(
-            key: const ValueKey('recipe_bidi_directionality'),
+            key: const ValueKey('recipe_rtl_directionality'),
             textDirection: TextDirection.rtl,
             child: SizedBox(
               width: 260,
               child: ReelText.controller(
-                key: const ValueKey('recipe_bidi_text'),
+                key: const ValueKey('recipe_rtl_text'),
                 controller: _label,
                 textAlign: TextAlign.start,
                 locale: const Locale('he'),
