@@ -1,3 +1,14 @@
+## 0.1.3
+
+- Fixed `DefaultTextStyle.textAlign` inheritance so `ReelText` follows Flutter
+  `Text` layout semantics while internal glyph faces stay anchored inside their
+  paint boxes.
+- Added regression coverage for inherited alignment, internal glyph alignment,
+  empty controller targets, and rapid controller updates.
+- Expanded the README API map and clarified layout, editable text, and example
+  app behavior.
+- Persisted the selected theme in the example app.
+
 ## 0.1.2
 
 - Relaxed the Dart and Flutter SDK constraints to support Flutter 3.16.0 and

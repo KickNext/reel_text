@@ -6,6 +6,7 @@
 build/
 coverage/
 docs/
+example/output/
 pubspec.lock
 *-audit.log
 web-home-redesign-*.png

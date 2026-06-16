@@ -7,12 +7,16 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:reel_text/reel_text.dart';
 import 'package:reel_text_example/main.dart';
 import 'package:reel_text_example/studio.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
   });
 
   tearDown(() {
@@ -188,6 +192,43 @@ void main() {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     WidgetsBinding.instance.handlePlatformBrightnessChanged();
     await tester.pumpAndSettle();
+
+    expect(Theme.of(tester.element(scaffold)).brightness, Brightness.light);
+    expect(Studio.isLight, isTrue);
+  });
+
+  testWidgets('app restores the saved theme choice', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    const store = ThemePreferenceStore();
+
+    Future<void> pumpExample() async {
+      await tester.pumpWidget(
+        ReelTextExampleApp(
+          useGoogleFonts: false,
+          autoPlayHero: false,
+          initialBrightnessOverride: await store.loadBrightness(),
+          themePreferenceStore: store,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    await pumpExample();
+
+    final scaffold = find.byType(Scaffold);
+    expect(Theme.of(tester.element(scaffold)).brightness, Brightness.dark);
+
+    await tester.tap(find.byKey(const ValueKey('theme_toggle_button')));
+    await tester.pumpAndSettle();
+
+    expect(Theme.of(tester.element(scaffold)).brightness, Brightness.light);
+    expect(await store.loadBrightness(), Brightness.light);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    await pumpExample();
 
     expect(Theme.of(tester.element(scaffold)).brightness, Brightness.light);
     expect(Studio.isLight, isTrue);

@@ -317,6 +317,7 @@ class _GlyphText extends StatelessWidget {
       text,
       style: style,
       textDirection: textDirection,
+      textAlign: TextAlign.start,
       locale: locale,
       strutStyle: strutStyle,
       softWrap: false,

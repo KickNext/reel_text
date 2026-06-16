@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:reel_text/reel_text.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'editor_page.dart';
@@ -14,9 +15,12 @@ import 'recipes_page.dart';
 import 'studio.dart';
 
 const double _kShellMaxWidth = 1280;
+const String _kThemePreferenceKey = 'reel_text_example_brightness';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  const themePreferenceStore = ThemePreferenceStore();
+  final savedBrightness = await _loadSavedBrightness(themePreferenceStore);
   GoogleFonts.instrumentSans(fontWeight: FontWeight.w700);
   GoogleFonts.instrumentSans(fontWeight: FontWeight.w800);
   GoogleFonts.jetBrainsMono();
@@ -24,7 +28,43 @@ Future<void> main() async {
   GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w700);
   await GoogleFonts.pendingFonts();
 
-  runApp(const ReelTextExampleApp());
+  runApp(
+    ReelTextExampleApp(
+      initialBrightnessOverride: savedBrightness,
+      themePreferenceStore: themePreferenceStore,
+    ),
+  );
+}
+
+class ThemePreferenceStore {
+  const ThemePreferenceStore();
+
+  Future<Brightness?> loadBrightness() async {
+    final value = await SharedPreferencesAsync().getString(
+      _kThemePreferenceKey,
+    );
+    return switch (value) {
+      'light' => Brightness.light,
+      'dark' => Brightness.dark,
+      _ => null,
+    };
+  }
+
+  Future<void> saveBrightness(Brightness brightness) async {
+    await SharedPreferencesAsync().setString(
+      _kThemePreferenceKey,
+      brightness.name,
+    );
+  }
+}
+
+Future<Brightness?> _loadSavedBrightness(ThemePreferenceStore store) async {
+  try {
+    return await store.loadBrightness();
+  } on Object catch (error) {
+    debugPrint('Could not load saved theme: $error');
+    return null;
+  }
 }
 
 class ReelTextExampleApp extends StatefulWidget {
@@ -32,6 +72,8 @@ class ReelTextExampleApp extends StatefulWidget {
     super.key,
     this.useGoogleFonts = true,
     this.autoPlayHero = true,
+    this.initialBrightnessOverride,
+    this.themePreferenceStore = const ThemePreferenceStore(),
   });
 
   /// Set to false in widget tests to avoid runtime font fetching.
@@ -39,6 +81,9 @@ class ReelTextExampleApp extends StatefulWidget {
 
   /// Set to false in widget tests so the hero stage does not auto-advance.
   final bool autoPlayHero;
+
+  final Brightness? initialBrightnessOverride;
+  final ThemePreferenceStore themePreferenceStore;
 
   @override
   State<ReelTextExampleApp> createState() => _ReelTextExampleAppState();
@@ -55,6 +100,7 @@ class _ReelTextExampleAppState extends State<ReelTextExampleApp>
   @override
   void initState() {
     super.initState();
+    _brightnessOverride = widget.initialBrightnessOverride;
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -73,6 +119,15 @@ class _ReelTextExampleAppState extends State<ReelTextExampleApp>
 
   void _setBrightness(Brightness brightness) {
     setState(() => _brightnessOverride = brightness);
+    unawaited(_saveBrightness(brightness));
+  }
+
+  Future<void> _saveBrightness(Brightness brightness) async {
+    try {
+      await widget.themePreferenceStore.saveBrightness(brightness);
+    } on Object catch (error) {
+      debugPrint('Could not save theme: $error');
+    }
   }
 
   @override
