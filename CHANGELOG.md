@@ -1,5 +1,11 @@
 ## Unreleased
 
+## 0.1.5
+
+- Corrected the 0.1.4 changelog to remove a mixed-bidi fix claim for
+  visual-order work that was reverted before release.
+- No runtime changes.
+
 ## 0.1.4
 
 - Added accessibility guideline coverage for the example app across desktop and
@@ -8,9 +14,7 @@
   top navigation, metadata links, recipe controls, and editor controls.
 - Made `ReelText.rich` respect nested `TextSpan.semanticsLabel` values unless a
   widget-level `semanticsLabel` override is provided.
-- Fixed glyph width measurement for mixed RTL/LTR bidi labels so internal slot
-  widths cannot become negative.
-- Added RTL, mixed bidi, and locale layout regression coverage.
+- Added locale and RTL alignment regression coverage.
 - Added an example RTL script recipe for visually checking right-to-left rolls.
 
 ## 0.1.3
