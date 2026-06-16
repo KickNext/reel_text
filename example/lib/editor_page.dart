@@ -441,7 +441,7 @@ class _ControlsPanel extends StatelessWidget {
               Expanded(
                 child: SizedBox(
                   key: const ValueKey('editor_target_input_frame'),
-                  height: 42,
+                  height: 48,
                   child: TextField(
                     key: const ValueKey('editor_target_input'),
                     controller: target,
@@ -466,24 +466,36 @@ class _ControlsPanel extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               SizedBox(
-                height: 42,
-                child: FilledButton(
-                  key: const ValueKey('editor_apply_button'),
-                  onPressed: () => onApply(null),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Studio.primary,
-                    foregroundColor: Studio.onAccent(Studio.primary),
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    'Apply',
-                    style: Studio.mono(
-                      size: 12,
-                      color: Studio.onAccent(Studio.primary),
-                      weight: FontWeight.w700,
+                height: 48,
+                child: Semantics(
+                  button: true,
+                  label: 'Apply',
+                  onTap: () => onApply(null),
+                  child: ExcludeSemantics(
+                    child: Center(
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton(
+                          key: const ValueKey('editor_apply_button'),
+                          onPressed: () => onApply(null),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Studio.primary,
+                            foregroundColor: Studio.onAccent(Studio.primary),
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Apply',
+                            style: Studio.mono(
+                              size: 12,
+                              color: Studio.onAccent(Studio.primary),
+                              weight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

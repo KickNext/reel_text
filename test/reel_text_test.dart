@@ -164,6 +164,72 @@ void main() {
     );
   });
 
+  testWidgets('settled locale layout matches Text size exactly', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_locale_size');
+    const textKey = ValueKey('text_locale_size');
+    const text = '漢字かな';
+    const locale = Locale('ja');
+    const style = TextStyle(
+      fontSize: 34,
+      height: 1.2,
+      fontWeight: FontWeight.w700,
+    );
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ReelText(text, key: reelKey, style: style, locale: locale),
+              Text(text, key: textKey, style: style, locale: locale),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getSize(find.byKey(reelKey)),
+      tester.getSize(find.byKey(textKey)),
+    );
+  });
+
+  testWidgets('mixed bidi labels keep Text-like size and semantics', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_bidi_size');
+    const textKey = ValueKey('text_bidi_size');
+    const text = 'ETA 12 שלום';
+    const style = TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.rtl,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ReelText(text, key: reelKey, style: style),
+              ExcludeSemantics(
+                child: Text(text, key: textKey, style: style),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsLabel(text), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(reelKey)),
+      tester.getSize(find.byKey(textKey)),
+    );
+  });
+
   testWidgets('settled layout clamps to bounded width without flex overflow', (
     tester,
   ) async {
@@ -605,6 +671,38 @@ void main() {
     expect(paragraph.registrar, isNotNull);
   });
 
+  testWidgets('rich text uses TextSpan semantics labels', (tester) async {
+    const visibleText = 'ETA';
+    const semanticsText = 'estimated arrival';
+    const span = TextSpan(text: visibleText, semanticsLabel: semanticsText);
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.rich(span),
+      ),
+    );
+
+    expect(find.bySemanticsLabel(semanticsText), findsOneWidget);
+    expect(find.bySemanticsLabel(visibleText), findsNothing);
+  });
+
+  testWidgets('explicit semanticsLabel overrides rich text semantics', (
+    tester,
+  ) async {
+    const span = TextSpan(text: 'ETA', semanticsLabel: 'estimated arrival');
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.rich(span, semanticsLabel: 'delivery estimate'),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('delivery estimate'), findsOneWidget);
+    expect(find.bySemanticsLabel('estimated arrival'), findsNothing);
+  });
+
   testWidgets('editing controller renders replacements inside EditableText', (
     tester,
   ) async {
@@ -829,6 +927,40 @@ void main() {
 
     expect(glyphRow.right, closeTo(box.right, 0.01));
     expect(lastGlyph.right, greaterThanOrEqualTo(box.right));
+  });
+
+  testWidgets('textAlign start and end respect RTL direction', (tester) async {
+    const boxKey = ValueKey('reel_text_rtl_alignment_box');
+    const style = TextStyle(fontSize: 32);
+
+    Future<void> pump(TextAlign align) async {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.rtl,
+          child: Center(
+            child: SizedBox(
+              key: boxKey,
+              width: 240,
+              child: ReelText('تم', textAlign: align, style: style),
+            ),
+          ),
+        ),
+      );
+    }
+
+    await pump(TextAlign.start);
+    var box = tester.getRect(find.byKey(boxKey));
+    var glyphRow = tester.getRect(
+      find.byKey(const ValueKey('reel_text_settled_glyphs')),
+    );
+    expect(glyphRow.right, closeTo(box.right, 0.01));
+
+    await pump(TextAlign.end);
+    box = tester.getRect(find.byKey(boxKey));
+    glyphRow = tester.getRect(
+      find.byKey(const ValueKey('reel_text_settled_glyphs')),
+    );
+    expect(glyphRow.left, closeTo(box.left, 0.01));
   });
 
   testWidgets('inherits DefaultTextStyle textAlign for public layout', (

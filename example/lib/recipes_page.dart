@@ -53,6 +53,12 @@ class RecipesPage extends StatelessWidget {
         preview: _SpamSafePreview(),
         code: _spamSafeCode,
       ),
+      const _RecipeCard(
+        title: 'RTL script',
+        blurb: 'Right-to-left labels roll through full words without jumping.',
+        preview: _RtlPreview(),
+        code: _rtlCode,
+      ),
     ];
 
     return ListView.separated(
@@ -182,6 +188,7 @@ class _RecipeReelButton extends StatelessWidget {
     required this.onPressed,
     required this.controller,
     required this.icon,
+    required this.semanticsLabel,
     required this.labelWidth,
     required this.slotKey,
     this.buttonKey,
@@ -189,10 +196,12 @@ class _RecipeReelButton extends StatelessWidget {
   });
 
   static const height = 44.0;
+  static const tapTargetHeight = 48.0;
 
   final VoidCallback onPressed;
   final ReelTextController controller;
   final IconData icon;
+  final String semanticsLabel;
   final double labelWidth;
   final Key slotKey;
   final Key? buttonKey;
@@ -202,40 +211,52 @@ class _RecipeReelButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final fill = accent ?? Studio.primary;
     final foreground = Studio.onAccent(fill);
-    return Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          key: buttonKey,
-          height: height,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 16, color: foreground),
-                const SizedBox(width: 8),
-                _RecipeMotionSlot(
-                  slotKey: slotKey,
-                  width: labelWidth,
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      onTap: onPressed,
+      child: SizedBox(
+        height: tapTargetHeight,
+        child: ExcludeSemantics(
+          child: Center(
+            child: Material(
+              color: fill,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                onTap: onPressed,
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  key: buttonKey,
                   height: height,
-                  child: ReelText.controller(
-                    controller: controller,
-                    style: Studio.mono(
-                      size: 12.5,
-                      color: foreground,
-                      weight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      height: Studio.compactLabelLineHeight,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, size: 16, color: foreground),
+                        const SizedBox(width: 8),
+                        _RecipeMotionSlot(
+                          slotKey: slotKey,
+                          width: labelWidth,
+                          height: height,
+                          child: ReelText.controller(
+                            controller: controller,
+                            style: Studio.mono(
+                              size: 12.5,
+                              color: foreground,
+                              weight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                              height: Studio.compactLabelLineHeight,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -370,6 +391,7 @@ class _FlashPreviewState extends State<_FlashPreview> {
       slotKey: const ValueKey('recipe_flash_motion_slot'),
       controller: _label,
       icon: Icons.copy_rounded,
+      semanticsLabel: 'Copy',
       labelWidth: 58,
       onPressed: () {
         _label.flash(
@@ -708,6 +730,7 @@ class _CounterPreviewState extends State<_CounterPreview> {
           alignment: WrapAlignment.center,
           children: [
             IconButton.outlined(
+              tooltip: 'Decrease counter',
               onPressed: () => setState(() {
                 _count -= 1;
                 _up = false;
@@ -719,6 +742,7 @@ class _CounterPreviewState extends State<_CounterPreview> {
               icon: const Icon(Icons.remove_rounded),
             ),
             IconButton.outlined(
+              tooltip: 'Increase counter',
               onPressed: () => setState(() {
                 _count += 1;
                 _up = true;
@@ -794,14 +818,114 @@ class _SpamSafePreviewState extends State<_SpamSafePreview> {
       controller: _label,
       accent: Studio.danger,
       icon: Icons.favorite_rounded,
+      semanticsLabel: _liked ? 'Liked' : 'Like',
       labelWidth: 46,
       onPressed: () {
-        _liked = !_liked;
+        setState(() => _liked = !_liked);
         _label.set(
           _liked ? 'Liked' : 'Like',
           options: const ReelTextOptions(interrupt: false),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 7. RTL script
+// ---------------------------------------------------------------------------
+
+const _rtlCode = '''
+final label = ReelTextController(initialText: 'משלוח בדרך ליעד');
+
+Directionality(
+  textDirection: TextDirection.rtl,
+  child: SizedBox(
+    width: 260,
+    child: ReelText.controller(
+      controller: label,
+      textAlign: TextAlign.start,
+      locale: const Locale('he'),
+    ),
+  ),
+);
+
+// On tap:
+label.set('עדכון מסלול צפוני');''';
+
+class _RtlPreview extends StatefulWidget {
+  const _RtlPreview();
+
+  @override
+  State<_RtlPreview> createState() => _RtlPreviewState();
+}
+
+class _RtlPreviewState extends State<_RtlPreview> {
+  static const _labels = [
+    'משלוח בדרך ליעד',
+    'עדכון מסלול צפוני',
+    'הגעה בעוד רגעים',
+  ];
+
+  late final ReelTextController _label;
+  var _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _label = ReelTextController(initialText: _labels.first);
+  }
+
+  @override
+  void dispose() {
+    _label.dispose();
+    super.dispose();
+  }
+
+  void _roll() {
+    _index = (_index + 1) % _labels.length;
+    _label.set(
+      _labels[_index],
+      options: const ReelTextOptions(direction: ReelTextDirection.up),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _RecipeMotionSlot(
+          slotKey: const ValueKey('recipe_rtl_motion_slot'),
+          width: 300,
+          height: 62,
+          child: Directionality(
+            key: const ValueKey('recipe_rtl_directionality'),
+            textDirection: TextDirection.rtl,
+            child: SizedBox(
+              width: 260,
+              child: ReelText.controller(
+                key: const ValueKey('recipe_rtl_text'),
+                controller: _label,
+                textAlign: TextAlign.start,
+                locale: const Locale('he'),
+                style: TextStyle(
+                  color: Studio.text,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  height: 1.12,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        StudioButton(
+          onPressed: _roll,
+          filled: false,
+          child: const Text('Roll RTL'),
+        ),
+      ],
     );
   }
 }

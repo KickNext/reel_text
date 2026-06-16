@@ -47,15 +47,16 @@ class _TextRunMetrics {
 
     final widths = <double>[];
     for (var i = 0; i < chars.length; i++) {
-      final start = _caretDx(painter, offsets[i]);
-      final end = _caretDx(painter, offsets[i + 1]);
-      final width = (end - start).abs();
-      widths.add(width);
+      widths.add(_glyphWidth(painter, offsets[i], offsets[i + 1]));
     }
 
     final measured = widths.fold<double>(0, (sum, width) => sum + width);
-    if (widths.isNotEmpty && (measured - painter.size.width).abs() > 0.01) {
-      widths[widths.length - 1] += painter.size.width - measured;
+    if (widths.isNotEmpty && (measured - painter.size.width).abs() > 1e-9) {
+      final index = widths.lastIndexWhere((width) => width > 0);
+      if (index >= 0) {
+        widths[index] =
+            math.max(0, widths[index] + painter.size.width - measured);
+      }
     }
 
     final totalWidth = widths.fold<double>(0, (sum, width) => sum + width);
@@ -70,6 +71,22 @@ class _TextRunMetrics {
     return painter
         .getOffsetForCaret(TextPosition(offset: offset), Rect.zero)
         .dx;
+  }
+
+  static double _glyphWidth(TextPainter painter, int start, int end) {
+    final boxes = painter.getBoxesForSelection(
+      TextSelection(baseOffset: start, extentOffset: end),
+    );
+    if (boxes.isNotEmpty) {
+      return boxes.fold<double>(
+        0,
+        (sum, box) => sum + (box.right - box.left).abs(),
+      );
+    }
+
+    final startDx = _caretDx(painter, start);
+    final endDx = _caretDx(painter, end);
+    return (endDx - startDx).abs();
   }
 }
 

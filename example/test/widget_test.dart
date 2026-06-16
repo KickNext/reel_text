@@ -234,6 +234,123 @@ void main() {
     expect(Studio.isLight, isTrue);
   });
 
+  testWidgets('home page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('editor page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_editor')));
+    await tester.pumpAndSettle();
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('recipes page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_recipes')));
+    await tester.pumpAndSettle();
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('mobile home page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('mobile recipes page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_recipes')));
+    await tester.pumpAndSettle();
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('mobile editor page meets Flutter accessibility guidelines', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_editor')));
+    await tester.pumpAndSettle();
+
+    await _expectAccessibilityGuidelines(tester);
+  });
+
+  testWidgets('primary pages tolerate 200 percent text scaling', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(() {
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+      tester.binding.setSurfaceSize(null);
+    });
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const ValueKey('page_tab_recipes')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const ValueKey('page_tab_editor')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'intro uses one line: empty, package name, package version, labels',
     (tester) async {
@@ -327,7 +444,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('install_copy_button'))).height,
-      34,
+      48,
     );
     expect(
       tester
@@ -604,6 +721,47 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('recipe_spam_button'))).height,
       44,
     );
+    expect(_semanticButtonWithLabel('Like'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('recipe_spam_button')));
+    await tester.pump();
+    expect(_semanticButtonWithLabel('Liked'), findsOneWidget);
+    expect(_semanticButtonWithLabel('Like'), findsNothing);
+
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('recipe_rtl_motion_slot')),
+      recipesList,
+      const Offset(0, -120),
+    );
+    expect(slotHeight('recipe_rtl_motion_slot'), 62);
+    expect(
+      tester
+          .widget<Directionality>(
+            find.byKey(const ValueKey('recipe_rtl_directionality')),
+          )
+          .textDirection,
+      TextDirection.rtl,
+    );
+    final rtlText = tester.widget<ReelText>(
+      find.byKey(const ValueKey('recipe_rtl_text')),
+    );
+    expect(rtlText.textAlign, TextAlign.start);
+    expect(rtlText.locale, const Locale('he'));
+
+    final rollButton = find.ancestor(
+      of: find.text('Roll RTL'),
+      matching: find.byType(OutlinedButton),
+    );
+    expect(rollButton, findsOneWidget);
+    tester.widget<OutlinedButton>(rollButton).onPressed!();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_rtl_motion_slot')),
+        matching: find.byKey(const ValueKey('reel_text_rolling')),
+      ),
+      findsWidgets,
+    );
 
     await tester.dragUntilVisible(
       find.text('KickNext'),
@@ -638,7 +796,7 @@ void main() {
     expect(input, findsOneWidget);
     final inputFrame = find.byKey(const ValueKey('editor_target_input_frame'));
     final applyButton = find.byKey(const ValueKey('editor_apply_button'));
-    expect(tester.getSize(inputFrame).height, 42);
+    expect(tester.getSize(inputFrame).height, 48);
     expect(tester.getSize(applyButton).height, 42);
     expect(
       tester.getCenter(inputFrame).dy,
@@ -828,6 +986,23 @@ Future<void> _expectFooter(WidgetTester tester) async {
   expect(find.text(versionLabel), findsOneWidget);
   expect(find.text('MIT'), findsOneWidget);
   expect(find.text(_footerYearLabel()), findsOneWidget);
+}
+
+Future<void> _expectAccessibilityGuidelines(WidgetTester tester) async {
+  await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+  await expectLater(tester, meetsGuideline(iOSTapTargetGuideline));
+  await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+  await expectLater(tester, meetsGuideline(textContrastGuideline));
+}
+
+Finder _semanticButtonWithLabel(String label) {
+  return find.byWidgetPredicate(
+    (widget) =>
+        widget is Semantics &&
+        widget.properties.button == true &&
+        widget.properties.label == label,
+    description: 'semantic button with label "$label"',
+  );
 }
 
 Color? _panelColor(WidgetTester tester, String key) {
