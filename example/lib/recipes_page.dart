@@ -189,7 +189,8 @@ class _RecipeReelButton extends StatelessWidget {
     this.accent,
   });
 
-  static const height = 48.0;
+  static const height = 44.0;
+  static const tapTargetHeight = 48.0;
 
   final VoidCallback onPressed;
   final ReelTextController controller;
@@ -208,41 +209,46 @@ class _RecipeReelButton extends StatelessWidget {
       button: true,
       label: semanticsLabel,
       onTap: onPressed,
-      child: ExcludeSemantics(
-        child: Material(
-          color: fill,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              key: buttonKey,
-              height: height,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 16, color: foreground),
-                    const SizedBox(width: 8),
-                    _RecipeMotionSlot(
-                      slotKey: slotKey,
-                      width: labelWidth,
-                      height: height,
-                      child: ReelText.controller(
-                        controller: controller,
-                        style: Studio.mono(
-                          size: 12.5,
-                          color: foreground,
-                          weight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                          height: Studio.compactLabelLineHeight,
+      child: SizedBox(
+        height: tapTargetHeight,
+        child: ExcludeSemantics(
+          child: Center(
+            child: Material(
+              color: fill,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                onTap: onPressed,
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  key: buttonKey,
+                  height: height,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, size: 16, color: foreground),
+                        const SizedBox(width: 8),
+                        _RecipeMotionSlot(
+                          slotKey: slotKey,
+                          width: labelWidth,
+                          height: height,
+                          child: ReelText.controller(
+                            controller: controller,
+                            style: Studio.mono(
+                              size: 12.5,
+                              color: foreground,
+                              weight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                              height: Studio.compactLabelLineHeight,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

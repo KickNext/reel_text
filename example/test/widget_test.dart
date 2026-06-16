@@ -669,7 +669,7 @@ void main() {
       recipesList,
       const Offset(0, -120),
     );
-    expect(slotHeight('recipe_flash_motion_slot'), 48);
+    expect(slotHeight('recipe_flash_motion_slot'), 44);
     expect(
       tester
           .widget<ReelText>(
@@ -684,7 +684,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('recipe_flash_button'))).height,
-      48,
+      44,
     );
 
     await tester.dragUntilVisible(
@@ -716,10 +716,10 @@ void main() {
       const Offset(0, -120),
     );
     expect(find.text('Spam-safe tap'), findsOneWidget);
-    expect(slotHeight('recipe_spam_motion_slot'), 48);
+    expect(slotHeight('recipe_spam_motion_slot'), 44);
     expect(
       tester.getSize(find.byKey(const ValueKey('recipe_spam_button'))).height,
-      48,
+      44,
     );
 
     await tester.dragUntilVisible(
@@ -756,7 +756,7 @@ void main() {
     final inputFrame = find.byKey(const ValueKey('editor_target_input_frame'));
     final applyButton = find.byKey(const ValueKey('editor_apply_button'));
     expect(tester.getSize(inputFrame).height, 48);
-    expect(tester.getSize(applyButton).height, 48);
+    expect(tester.getSize(applyButton).height, 42);
     expect(
       tester.getCenter(inputFrame).dy,
       closeTo(tester.getCenter(applyButton).dy, 0.1),

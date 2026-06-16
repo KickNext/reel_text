@@ -462,7 +462,7 @@ class _TopBarState extends State<_TopBar> {
                       ],
                     )
                   : SizedBox(
-                      height: 56,
+                      height: 48,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
@@ -503,30 +503,37 @@ class _ThemeToggleButton extends StatelessWidget {
       button: true,
       label: label,
       onTap: toggle,
-      child: ExcludeSemantics(
-        child: Tooltip(
-          message: label,
-          child: Material(
-            color: Studio.inset,
-            borderRadius: BorderRadius.circular(999),
-            child: InkWell(
-              key: const ValueKey('theme_toggle_button'),
-              onTap: toggle,
-              borderRadius: BorderRadius.circular(999),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                height: 48,
-                width: 48,
-                decoration: BoxDecoration(
+      child: SizedBox.square(
+        dimension: 48,
+        child: ExcludeSemantics(
+          child: Center(
+            child: Tooltip(
+              message: label,
+              child: Material(
+                color: Studio.inset,
+                borderRadius: BorderRadius.circular(999),
+                child: InkWell(
+                  key: const ValueKey('theme_toggle_button'),
+                  onTap: toggle,
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Studio.borderBright.withValues(alpha: 0.56),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    height: compact ? 36 : 38,
+                    width: compact ? 38 : 42,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Studio.borderBright.withValues(alpha: 0.56),
+                      ),
+                    ),
+                    child: Icon(
+                      isLight
+                          ? Icons.dark_mode_rounded
+                          : Icons.light_mode_rounded,
+                      size: compact ? 16 : 17,
+                      color: Studio.text,
+                    ),
                   ),
-                ),
-                child: Icon(
-                  isLight ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                  size: compact ? 16 : 17,
-                  color: Studio.text,
                 ),
               ),
             ),
@@ -559,43 +566,110 @@ class _PageTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visualTabs = Row(
+      mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        for (var i = 0; i < pageNames.length; i++)
+          if (compact)
+            Expanded(
+              child: _PageTabVisual(
+                label: pageNames[i],
+                selected: i == selected,
+              ),
+            )
+          else
+            _PageTabVisual(label: pageNames[i], selected: i == selected),
+      ],
+    );
+    final hitTargets = Row(
+      mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        for (var i = 0; i < pageNames.length; i++)
+          if (compact)
+            Expanded(
+              child: _PageTabHitTarget(
+                key: ValueKey('page_tab_${pageNames[i].toLowerCase()}'),
+                label: pageNames[i],
+                selected: i == selected,
+                onTap: () => onPageChanged(i),
+              ),
+            )
+          else
+            _PageTabHitTarget(
+              key: ValueKey('page_tab_${pageNames[i].toLowerCase()}'),
+              label: pageNames[i],
+              selected: i == selected,
+              onTap: () => onPageChanged(i),
+            ),
+      ],
+    );
+
+    return SizedBox(
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ExcludeSemantics(
+            child: Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Studio.inset.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Studio.borderBright.withValues(alpha: 0.42),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: visualTabs,
+                ),
+              ),
+            ),
+          ),
+          Center(child: hitTargets),
+        ],
+      ),
+    );
+  }
+}
+
+class _PageTabVisual extends StatelessWidget {
+  const _PageTabVisual({required this.label, required this.selected});
+
+  final String label;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Studio.inset.withValues(alpha: 0.88),
+        color: selected ? Studio.primary : Studio.transparent,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Studio.borderBright.withValues(alpha: 0.42)),
+        border: Border.all(
+          color: selected ? Studio.primary : Studio.transparent,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(3),
-        child: Row(
-          mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
-          children: [
-            for (var i = 0; i < pageNames.length; i++)
-              if (compact)
-                Expanded(
-                  child: _PageTab(
-                    key: ValueKey('page_tab_${pageNames[i].toLowerCase()}'),
-                    label: pageNames[i],
-                    selected: i == selected,
-                    onTap: () => onPageChanged(i),
-                  ),
-                )
-              else
-                _PageTab(
-                  key: ValueKey('page_tab_${pageNames[i].toLowerCase()}'),
-                  label: pageNames[i],
-                  selected: i == selected,
-                  onTap: () => onPageChanged(i),
-                ),
-          ],
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.fade,
+          softWrap: false,
+          style: Studio.mono(
+            size: 10.5,
+            color: selected ? Studio.onAccent(Studio.primary) : Studio.text,
+            weight: FontWeight.w800,
+            letterSpacing: 0.7,
+          ),
         ),
       ),
     );
   }
 }
 
-class _PageTab extends StatelessWidget {
-  const _PageTab({
+class _PageTabHitTarget extends StatelessWidget {
+  const _PageTabHitTarget({
     super.key,
     required this.label,
     required this.selected,
@@ -613,36 +687,16 @@ class _PageTab extends StatelessWidget {
       selected: selected,
       label: label,
       onTap: onTap,
-      child: ExcludeSemantics(
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            constraints: const BoxConstraints(minHeight: 48),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-            decoration: BoxDecoration(
-              color: selected ? Studio.primary : Studio.transparent,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: selected ? Studio.primary : Studio.transparent,
-              ),
-            ),
+      child: SizedBox(
+        height: 48,
+        child: ExcludeSemantics(
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(999),
             child: Center(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                softWrap: false,
-                style: Studio.mono(
-                  size: 10.5,
-                  color: selected
-                      ? Studio.onAccent(Studio.primary)
-                      : Studio.text,
-                  weight: FontWeight.w800,
-                  letterSpacing: 0.7,
-                ),
+              child: Opacity(
+                opacity: 0,
+                child: _PageTabVisual(label: label, selected: selected),
               ),
             ),
           ),
@@ -736,66 +790,74 @@ class _MetricLinkButton extends StatelessWidget {
         button: true,
         label: '$tooltip, $count $label',
         onTap: onPressed,
-        child: ExcludeSemantics(
-          child: Material(
-            color: Studio.inset,
-            borderRadius: BorderRadius.circular(999),
-            child: InkWell(
-              key: buttonKey,
-              onTap: onPressed,
-              borderRadius: BorderRadius.circular(999),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                height: 48,
-                padding: EdgeInsets.only(left: 11, right: compact ? 11 : 12),
-                decoration: BoxDecoration(
+        child: SizedBox(
+          height: 48,
+          child: ExcludeSemantics(
+            child: Center(
+              child: Material(
+                color: Studio.inset,
+                borderRadius: BorderRadius.circular(999),
+                child: InkWell(
+                  key: buttonKey,
+                  onTap: onPressed,
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Studio.borderBright.withValues(alpha: 0.56),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SvgPicture.asset(
-                      assetName,
-                      key: iconKey,
-                      width: 17,
-                      height: 17,
-                      colorFilter: colorize
-                          ? ColorFilter.mode(Studio.text, BlendMode.srcIn)
-                          : null,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    height: 38,
+                    padding: EdgeInsets.only(
+                      left: 11,
+                      right: compact ? 11 : 12,
                     ),
-                    const SizedBox(width: 8),
-                    ReelText(
-                      count,
-                      key: metricKey,
-                      options: ReelTextOptions(
-                        direction: ReelTextDirection.up,
-                        duration: const Duration(milliseconds: 260),
-                        stagger: const Duration(milliseconds: 18),
-                        color: Studio.primary,
-                      ),
-                      style: Studio.mono(
-                        size: 11,
-                        color: Studio.text,
-                        weight: FontWeight.w800,
-                        height: 1,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Studio.borderBright.withValues(alpha: 0.56),
                       ),
                     ),
-                    if (!compact) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        label,
-                        style: Studio.mono(
-                          size: 10,
-                          color: Studio.faint,
-                          weight: FontWeight.w700,
-                          height: 1,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SvgPicture.asset(
+                          assetName,
+                          key: iconKey,
+                          width: 17,
+                          height: 17,
+                          colorFilter: colorize
+                              ? ColorFilter.mode(Studio.text, BlendMode.srcIn)
+                              : null,
                         ),
-                      ),
-                    ],
-                  ],
+                        const SizedBox(width: 8),
+                        ReelText(
+                          count,
+                          key: metricKey,
+                          options: ReelTextOptions(
+                            direction: ReelTextDirection.up,
+                            duration: const Duration(milliseconds: 260),
+                            stagger: const Duration(milliseconds: 18),
+                            color: Studio.primary,
+                          ),
+                          style: Studio.mono(
+                            size: 11,
+                            color: Studio.text,
+                            weight: FontWeight.w800,
+                            height: 1,
+                          ),
+                        ),
+                        if (!compact) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            label,
+                            style: Studio.mono(
+                              size: 10,
+                              color: Studio.faint,
+                              weight: FontWeight.w700,
+                              height: 1,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
