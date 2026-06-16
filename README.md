@@ -13,7 +13,7 @@ Flutter. Each grapheme cluster gets its own measured slot, changed glyphs slide
 vertically, optional color flashes fade back to the inherited text color, and
 imperative `flash()` calls stay safe under rapid button taps.
 
-![reel_text showcase](assets/showcase.webp)
+![reel_text showcase](assets/reel_text_hero_light_720p_60fps_full_cycle.webp)
 
 [Try the live demo](https://kicknext.github.io/reel_text/)
 

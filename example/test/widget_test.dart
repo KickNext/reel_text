@@ -721,6 +721,12 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('recipe_spam_button'))).height,
       44,
     );
+    expect(_semanticButtonWithLabel('Like'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('recipe_spam_button')));
+    await tester.pump();
+    expect(_semanticButtonWithLabel('Liked'), findsOneWidget);
+    expect(_semanticButtonWithLabel('Like'), findsNothing);
 
     await tester.dragUntilVisible(
       find.byKey(const ValueKey('recipe_rtl_motion_slot')),
@@ -987,6 +993,16 @@ Future<void> _expectAccessibilityGuidelines(WidgetTester tester) async {
   await expectLater(tester, meetsGuideline(iOSTapTargetGuideline));
   await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
   await expectLater(tester, meetsGuideline(textContrastGuideline));
+}
+
+Finder _semanticButtonWithLabel(String label) {
+  return find.byWidgetPredicate(
+    (widget) =>
+        widget is Semantics &&
+        widget.properties.button == true &&
+        widget.properties.label == label,
+    description: 'semantic button with label "$label"',
+  );
 }
 
 Color? _panelColor(WidgetTester tester, String key) {

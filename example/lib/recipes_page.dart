@@ -818,10 +818,10 @@ class _SpamSafePreviewState extends State<_SpamSafePreview> {
       controller: _label,
       accent: Studio.danger,
       icon: Icons.favorite_rounded,
-      semanticsLabel: 'Like',
+      semanticsLabel: _liked ? 'Liked' : 'Like',
       labelWidth: 46,
       onPressed: () {
-        _liked = !_liked;
+        setState(() => _liked = !_liked);
         _label.set(
           _liked ? 'Liked' : 'Like',
           options: const ReelTextOptions(interrupt: false),
