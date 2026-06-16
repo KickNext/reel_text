@@ -395,7 +395,7 @@ void main() {
                   exitOffset: Duration.zero,
                 ),
               ),
-              ExcludeSemantics(
+              const ExcludeSemantics(
                 child: Text(text, key: textKey, style: style),
               ),
             ],
@@ -438,7 +438,7 @@ void main() {
             mainAxisSize: MainAxisSize.min,
             children: [
               ReelText(reelText, key: reelKey, style: style, options: options),
-              ExcludeSemantics(
+              const ExcludeSemantics(
                 child: Text(text, key: textKey, style: style),
               ),
             ],
@@ -808,7 +808,7 @@ void main() {
   ) async {
     const boxKey = ValueKey('reel_text_loose_alignment_box');
     const reelKey = ValueKey('reel_text_loose_alignment_reel');
-    final constraints = BoxConstraints(maxWidth: 240);
+    const constraints = BoxConstraints(maxWidth: 240);
     const style = TextStyle(fontSize: 32);
     final painter = TextPainter(
       text: const TextSpan(text: 'Go', style: style),

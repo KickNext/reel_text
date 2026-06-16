@@ -22,6 +22,9 @@ imperative `flash()` calls stay safe under rapid button taps.
 flutter pub add reel_text
 ```
 
+The package supports Flutter 3.16.0 and newer. The included showcase app tracks
+current stable Flutter because it uses modern demo-only UI APIs.
+
 Then import it:
 
 ```dart
@@ -292,6 +295,9 @@ Run the included example:
 cd example
 flutter run
 ```
+
+The example app is a showcase, not the package compatibility floor; it may use a
+newer Flutter SDK than the library itself.
 
 The example has three pages:
 
