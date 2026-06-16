@@ -363,8 +363,11 @@ class _ReelTextState extends State<ReelText>
         widget.textDirection ??
         Directionality.maybeOf(context) ??
         TextDirection.ltr;
-    final defaultStyle = DefaultTextStyle.of(context).style;
+    final defaultTextStyle = DefaultTextStyle.of(context);
+    final defaultStyle = defaultTextStyle.style;
     final style = defaultStyle.merge(widget.style);
+    final effectiveTextAlign =
+        widget.textAlign ?? defaultTextStyle.textAlign ?? TextAlign.start;
     final visibleText = _targetText ?? _displayedText;
     final visibleRichText = _targetText == null
         ? _displayedRichText
@@ -401,9 +404,8 @@ class _ReelTextState extends State<ReelText>
         text: plan.toText,
       );
       final height = math.max(fromMetrics.height, toMetrics.height);
-      final textAlign = widget.textAlign ?? TextAlign.start;
       final anchorShrinkingRight =
-          _alignsToRight(textAlign, direction) &&
+          _alignsToRight(effectiveTextAlign, direction) &&
           toMetrics.width < fromMetrics.width;
       child = AnimatedBuilder(
         animation: _controller,
@@ -437,7 +439,7 @@ class _ReelTextState extends State<ReelText>
             child: OverflowBox(
               alignment: anchorShrinkingRight
                   ? _inlineStartAlignment(direction)
-                  : _alignmentForTextAlign(textAlign, direction),
+                  : _alignmentForTextAlign(effectiveTextAlign, direction),
               minWidth: 0,
               maxWidth: double.infinity,
               minHeight: height,
@@ -450,7 +452,7 @@ class _ReelTextState extends State<ReelText>
     }
 
     child = _ReelTextAlignment(
-      textAlign: widget.textAlign ?? TextAlign.start,
+      textAlign: effectiveTextAlign,
       textDirection: direction,
       child: child,
     );
@@ -459,7 +461,7 @@ class _ReelTextState extends State<ReelText>
       label: widget.semanticsLabel ?? visibleText,
       child: _ReelTextSelection(
         content: visibleContent,
-        textAlign: widget.textAlign ?? TextAlign.start,
+        textAlign: effectiveTextAlign,
         textDirection: direction,
         locale: widget.locale,
         strutStyle: widget.strutStyle,

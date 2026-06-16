@@ -4,7 +4,8 @@
 [![live demo](https://img.shields.io/badge/demo-live-blue)](https://kicknext.github.io/reel_text/)
 
 Dependency-light Flutter text roll animation for short labels, counters, status
-text, command buttons, rich text, and inline editable text corrections.
+text, command buttons, rich text, and inline editable text corrections. The
+package itself has no runtime dependencies beyond Flutter.
 
 `reel_text` brings the DOM text-roll idea from
 [Danilaa1's original package](https://github.com/Danilaa1/slot-text) to
@@ -22,8 +23,13 @@ imperative `flash()` calls stay safe under rapid button taps.
 flutter pub add reel_text
 ```
 
-The package supports Flutter 3.16.0 and newer. The included showcase app tracks
-current stable Flutter because it uses modern demo-only UI APIs.
+The package supports Dart 3.2.0 and Flutter 3.16.0 and newer. The included
+showcase app tracks current stable Flutter because it uses modern demo-only UI
+APIs.
+
+Only the package root is the compatibility floor. Demo-only dependencies such
+as `http`, `url_launcher`, `flutter_svg`, and `google_fonts` live under
+`example/`.
 
 Then import it:
 
@@ -42,6 +48,19 @@ import 'package:reel_text/reel_text.dart';
 
 Keep it focused on short, high-signal text. Long paragraphs are better left to
 plain `Text`.
+
+## API map
+
+| Need | Use |
+| --- | --- |
+| Declarative one-line text | `ReelText('Copy')` |
+| Styled inline phrase | `ReelText.rich(TextSpan(...))` |
+| Imperative labels | `ReelTextController` with `ReelText.controller` |
+| Temporary button feedback | `ReelTextController.flash()` |
+| Async waiting/success/failure labels | `ReelTextController.runWhile()` |
+| Manual progress or waiting loops | `ReelTextController.startProgress()` or `.startWaiting()` |
+| Rotating labels without a controller | `ReelText.sequence` |
+| Editable inline corrections | `ReelTextEditingController` and `ReelTextEditReplacement` |
 
 ## Quick start
 
@@ -158,6 +177,10 @@ waiting preset. All waiting and progress helpers compile down to the same roll
 engine as normal text changes, so options for direction, curve, stagger, and
 color still apply.
 
+Both `startWaiting()` and `startProgress()` return a `ReelTextProgress` handle.
+Use `complete()`, `fail()`, or `cancel()` to stop the loop, and `isActive` to
+ignore stale async callbacks after another progress loop has taken over.
+
 ## Sequences
 
 Use `ReelText.sequence` when a label should rotate without manually wiring a
@@ -175,8 +198,9 @@ ReelText.sequence(
 
 ## Layout, selection, and emoji
 
-`ReelText` keeps the same single-line layout box as Flutter `Text` for the
-current target string, including during a roll. It does not add extra vertical
+In settled state, `ReelText` keeps the same single-line layout box as Flutter
+`Text` for the current string. During a roll, its width interpolates toward the
+target string while the height stays stable. It does not add extra vertical
 padding for the animation, and heavy text styles get extra horizontal paint
 room so bold glyphs do not clip at slot edges.
 
@@ -214,6 +238,16 @@ ReelText.rich(
 );
 ```
 
+`ReelText.rich` supports `TextSpan` trees. `WidgetSpan` is not supported because
+the widget splits text into measured rolling grapheme clusters.
+
+Because each grapheme cluster gets its own measured slot, Flutter still owns
+the font metrics and emoji clusters, but text shaping is not identical to one
+continuous `Text` run in every script. Latin kerning pairs and ligatures may
+look slightly looser during slot animation, and connected scripts such as
+Arabic should be tested in context before using a roll effect. For short labels,
+counters, statuses, and commands, this tradeoff keeps the motion predictable.
+
 ## Editable text
 
 For editable surfaces, use `ReelTextEditingController`. It extends Flutter's
@@ -236,9 +270,15 @@ controller.animateReplacements(
 );
 ```
 
-The example editor uses this controller with a spell-check pipeline:
-LanguageTool for online suggestions, Flutter's native spellcheck service where
-the platform exposes one, and a deterministic fallback for offline demo text.
+The example app uses this controller in the Editor target input so preset
+labels can roll into place before the text field commits the replacement.
+
+For custom editors, `beginReplacements()` can stage inline replacement widgets,
+`animateReplacements()` rolls them to their target text, `replacementText()`
+previews the committed string, and `commitReplacements()` or
+`clearReplacements()` resolves the edit. Replacement ranges are validated and
+must not overlap. Pass `spanBuilder` to customize the resting text span without
+subclassing the controller.
 
 ## Reduced motion
 
@@ -251,7 +291,8 @@ text instantly instead of rolling. Opt out per widget with
 
 `ReelText` measures glyph slots from the active Flutter text layout. If your app
 loads fonts asynchronously, preload them before the first `ReelText` frame so
-initial slot widths are measured with the final font:
+initial slot widths are measured with the final font. For example, with
+`google_fonts`:
 
 ```dart
 Future<void> main() async {
@@ -270,7 +311,7 @@ Future<void> main() async {
 | `stagger` | `45ms` | Delay between glyph starts. |
 | `duration` | `300ms` | Per-glyph slide duration. |
 | `exitOffset` | `50ms` | Delay before incoming glyphs chase outgoing glyphs. |
-| `curve` | springy cubic | Slide curve. |
+| `curve` | `Cubic(0.34, 1.56, 0.64, 1)` | Slide curve. |
 | `bounce` | `0.6` | Per-glyph timing/tilt variation and settle-overshoot depth. |
 | `color` | null | Flat incoming glyph tint. |
 | `colorBuilder` | null | Per-glyph incoming tint, such as `chromatic()`. |
@@ -296,20 +337,29 @@ cd example
 flutter run
 ```
 
-The example app is a showcase, not the package compatibility floor; it may use a
-newer Flutter SDK than the library itself.
+The example app is a showcase, not the package compatibility floor. It targets
+current stable Flutter separately from the library's Dart 3.2.0 and Flutter
+3.16.0 minimum.
 
-The example has three pages:
+The example has three tabs:
 
 - **Home**: a self-running, choreographed presentation of the core motion
-  patterns.
+  patterns, package metadata, install flow, counters, async labels, and inline
+  correction moments.
 - **Recipes**: live previews with copy-ready code for common integrations.
-- **Editor**: a selectable document where typo corrections roll inline in the
-  body copy.
+- **Editor**: a motion workbench with a target input, direction/color/timing
+  controls, and a `ReelText.controller` preview.
 
 Build the web demo with:
 
 ```bash
 cd example
 flutter build web
+```
+
+For the public GitHub Pages path, build with:
+
+```bash
+cd example
+flutter build web --base-href "/reel_text/"
 ```

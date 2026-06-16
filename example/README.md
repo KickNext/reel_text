@@ -12,7 +12,8 @@ It demonstrates:
 - Imperative button feedback with `ReelTextController.flash()`.
 - Async labels with `runWhile()` and `startWaiting()`.
 - Numeric counters, status pills, rotating labels, and rich text.
-- Inline editable text corrections with `ReelTextEditingController`.
+- A motion workbench with target editing, direction/color/timing controls, and
+  a `ReelText.controller` preview.
 
 Run it with:
 

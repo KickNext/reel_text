@@ -14,12 +14,14 @@ dependencies:
   http: ^1.6.0
   reel_text:
     path: ..
+  shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
+  shared_preferences_platform_interface: ^2.4.2
 
 flutter:
   uses-material-design: true

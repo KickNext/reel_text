@@ -294,9 +294,8 @@ void main() {
     await tester.pumpWidget(frame('iii'));
     await tester.pump(const Duration(milliseconds: 100));
 
-    final rollingWidth = tester
-        .getSize(find.byKey(const ValueKey('reel_text_rolling')))
-        .width;
+    final rollingWidth =
+        tester.getSize(find.byKey(const ValueKey('reel_text_rolling'))).width;
 
     expect(tester.getSize(find.byKey(reelKey)).width, rollingWidth);
     expect(rollingWidth, greaterThan(fromWidth));
@@ -368,6 +367,35 @@ void main() {
       closeTo(painter.size.width, 0.01),
     );
     expect(settledFaceWidths, contains(greaterThan(painter.size.width + 3)));
+  });
+
+  testWidgets('internal glyph text ignores inherited textAlign', (
+    tester,
+  ) async {
+    const style = TextStyle(fontSize: 112, fontWeight: FontWeight.w900);
+
+    await tester.pumpWidget(
+      const DefaultTextStyle(
+        style: TextStyle(),
+        textAlign: TextAlign.end,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(child: ReelText('0', style: style)),
+        ),
+      ),
+    );
+
+    final glyphTexts = tester
+        .widgetList<Text>(
+          find.descendant(of: find.byType(ReelText), matching: find.text('0')),
+        )
+        .toList();
+
+    expect(glyphTexts, isNotEmpty);
+    expect(
+      glyphTexts.every((text) => text.textAlign == TextAlign.start),
+      isTrue,
+    );
   });
 
   testWidgets('complex emoji clusters match Text size and roll safely', (
@@ -803,6 +831,32 @@ void main() {
     expect(lastGlyph.right, greaterThanOrEqualTo(box.right));
   });
 
+  testWidgets('inherits DefaultTextStyle textAlign for public layout', (
+    tester,
+  ) async {
+    const boxKey = ValueKey('reel_text_inherited_alignment_box');
+
+    await tester.pumpWidget(
+      const DefaultTextStyle(
+        style: TextStyle(fontSize: 32),
+        textAlign: TextAlign.end,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: SizedBox(key: boxKey, width: 240, child: ReelText('Go')),
+          ),
+        ),
+      ),
+    );
+
+    final box = tester.getRect(find.byKey(boxKey));
+    final glyphRow = tester.getRect(
+      find.byKey(const ValueKey('reel_text_settled_glyphs')),
+    );
+
+    expect(glyphRow.right, closeTo(box.right, 0.01));
+  });
+
   testWidgets('textAlign end keeps Text-like size under loose constraints', (
     tester,
   ) async {
@@ -1236,6 +1290,81 @@ void main() {
     final settledWidth = tester.getSize(find.byType(ReelText)).width;
 
     expect(settledWidth, closeTo(lastRollingWidth, 0.01));
+  });
+
+  testWidgets('supports empty text and rolls back from empty targets', (
+    tester,
+  ) async {
+    final controller = ReelTextController(initialText: '');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: ReelText.controller(
+            controller: controller,
+            options: const ReelTextOptions(
+              duration: Duration(milliseconds: 20),
+              stagger: Duration.zero,
+              exitOffset: Duration.zero,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(controller.value, '');
+    expect(tester.getSize(find.byType(ReelText)).width, 0);
+    expect(find.byKey(const ValueKey('reel_text_settled')), findsOneWidget);
+
+    controller.set('Ready');
+    await tester.pumpAndSettle();
+
+    expect(controller.value, 'Ready');
+    expect(tester.getSize(find.byType(ReelText)).width, greaterThan(0));
+    expect(find.bySemanticsLabel('Ready'), findsOneWidget);
+
+    controller.set('');
+    await tester.pumpAndSettle();
+
+    expect(controller.value, '');
+    expect(tester.getSize(find.byType(ReelText)).width, 0);
+    expect(find.text('Ready'), findsNothing);
+  });
+
+  testWidgets('rapid controller set calls land on the latest value', (
+    tester,
+  ) async {
+    final controller = ReelTextController(initialText: 'one');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.controller(
+          controller: controller,
+          options: const ReelTextOptions(
+            duration: Duration(milliseconds: 40),
+            stagger: Duration.zero,
+            exitOffset: Duration.zero,
+          ),
+        ),
+      ),
+    );
+
+    controller.set('two');
+    controller.set('three');
+    controller.set('four');
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(controller.value, 'four');
+    expect(find.bySemanticsLabel('four'), findsOneWidget);
+    expect(find.bySemanticsLabel('one'), findsNothing);
+    expect(find.bySemanticsLabel('two'), findsNothing);
+    expect(find.bySemanticsLabel('three'), findsNothing);
   });
 
   testWidgets('controller set cancels a pending flash revert', (tester) async {
