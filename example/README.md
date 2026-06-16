@@ -2,6 +2,9 @@
 
 Interactive Flutter example app for the `reel_text` package.
 
+This showcase tracks current stable Flutter. The package itself supports older
+Flutter versions through the root `pubspec.yaml`.
+
 It demonstrates:
 
 - A choreographed Home page for the main motion patterns.

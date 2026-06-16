@@ -1,3 +1,10 @@
+## 0.1.2
+
+- Relaxed the Dart and Flutter SDK constraints to support Flutter 3.16.0 and
+  newer, while keeping the current package implementation unchanged.
+- Documented that the showcase example tracks current stable Flutter separately
+  from the package compatibility floor.
+
 ## 0.1.1
 
 - Fixed horizontal glyph clipping for heavy text styles in both rolling and
