@@ -444,7 +444,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('install_copy_button'))).height,
-      34,
+      48,
     );
     expect(
       tester

@@ -1859,15 +1859,14 @@ class _InstallBlockState extends State<_InstallBlock> {
     final copyButton = SizedBox(
       key: const ValueKey('install_copy_button'),
       width: 88,
-      height: 34,
+      height: 48,
       child: FilledButton(
         onPressed: _copy,
         style: FilledButton.styleFrom(
           backgroundColor: Studio.primary,
           foregroundColor: Studio.onAccent(Studio.primary),
           padding: EdgeInsets.zero,
-          minimumSize: const Size(88, 34),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          minimumSize: const Size(88, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
