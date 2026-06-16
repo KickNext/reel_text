@@ -3,13 +3,11 @@ part of 'reel_text.dart';
 class _TextRunMetrics {
   const _TextRunMetrics({
     required this.widths,
-    required this.lefts,
     required this.width,
     required this.height,
   });
 
   final List<double> widths;
-  final List<double> lefts;
   final double width;
   final double height;
 
@@ -18,16 +16,6 @@ class _TextRunMetrics {
       return 0;
     }
     return widths[index];
-  }
-
-  double leftAt(int index) {
-    if (index < 0) {
-      return 0;
-    }
-    if (index >= lefts.length) {
-      return width;
-    }
-    return lefts[index];
   }
 
   static _TextRunMetrics of({
@@ -58,11 +46,8 @@ class _TextRunMetrics {
     }
 
     final widths = <double>[];
-    final lefts = <double>[];
     for (var i = 0; i < chars.length; i++) {
-      final bounds = _glyphBounds(painter, offsets[i], offsets[i + 1]);
-      widths.add(bounds.width);
-      lefts.add(bounds.left);
+      widths.add(_glyphWidth(painter, offsets[i], offsets[i + 1]));
     }
 
     final measured = widths.fold<double>(0, (sum, width) => sum + width);
@@ -77,7 +62,6 @@ class _TextRunMetrics {
     final totalWidth = widths.fold<double>(0, (sum, width) => sum + width);
     return _TextRunMetrics(
       widths: widths,
-      lefts: lefts,
       width: totalWidth,
       height: painter.size.height,
     );
@@ -89,36 +73,21 @@ class _TextRunMetrics {
         .dx;
   }
 
-  static _GlyphBounds _glyphBounds(TextPainter painter, int start, int end) {
+  static double _glyphWidth(TextPainter painter, int start, int end) {
     final boxes = painter.getBoxesForSelection(
       TextSelection(baseOffset: start, extentOffset: end),
     );
     if (boxes.isNotEmpty) {
-      final left = boxes.fold<double>(
-        double.infinity,
-        (min, box) => math.min(min, math.min(box.left, box.right)),
-      );
-      final width = boxes.fold<double>(
+      return boxes.fold<double>(
         0,
         (sum, box) => sum + (box.right - box.left).abs(),
       );
-      return _GlyphBounds(left: left, width: width);
     }
 
     final startDx = _caretDx(painter, start);
     final endDx = _caretDx(painter, end);
-    return _GlyphBounds(
-      left: math.min(startDx, endDx),
-      width: (endDx - startDx).abs(),
-    );
+    return (endDx - startDx).abs();
   }
-}
-
-class _GlyphBounds {
-  const _GlyphBounds({required this.left, required this.width});
-
-  final double left;
-  final double width;
 }
 
 class _GlyphMetrics {
