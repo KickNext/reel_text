@@ -245,12 +245,27 @@ Screen readers get one semantic label for the current value. For rich text,
 `TextSpan.semanticsLabel` is respected; pass `semanticsLabel` to `ReelText` when
 the whole rolling label needs a custom spoken value.
 
+RTL and mixed-bidi labels follow Flutter's visual glyph order while keeping
+logical semantics. Use `Directionality` or the widget's `textDirection` when the
+label lives outside an already-directional subtree:
+
+```dart
+Directionality(
+  textDirection: TextDirection.rtl,
+  child: ReelText('ETA 12 דק', textAlign: TextAlign.start),
+);
+```
+
+During a roll, bidi labels are diffed in visual slots instead of applying a
+separate horizontal correction after the glyph replacement.
+
 Because each grapheme cluster gets its own measured slot, Flutter still owns
-the font metrics and emoji clusters, but text shaping is not identical to one
-continuous `Text` run in every script. Latin kerning pairs and ligatures may
-look slightly looser during slot animation, and connected scripts such as
-Arabic should be tested in context before using a roll effect. For short labels,
-counters, statuses, and commands, this tradeoff keeps the motion predictable.
+the font metrics, bidi visual order, and emoji clusters, but text shaping is not
+identical to one continuous `Text` run in every script. Latin kerning pairs and
+ligatures may look slightly looser during slot animation, and connected scripts
+such as Arabic should be tested in context before using a roll effect. For short
+labels, counters, statuses, and commands, this tradeoff keeps the motion
+predictable.
 
 ## Editable text
 
@@ -354,7 +369,8 @@ The example has three tabs:
 - **Home**: a self-running, choreographed presentation of the core motion
   patterns, package metadata, install flow, counters, async labels, and inline
   correction moments.
-- **Recipes**: live previews with copy-ready code for common integrations.
+- **Recipes**: live previews with copy-ready code for common integrations,
+  including RTL and mixed-bidi labels.
 - **Editor**: a motion workbench with a target input, direction/color/timing
   controls, and a `ReelText.controller` preview.
 

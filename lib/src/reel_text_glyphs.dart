@@ -27,14 +27,14 @@ class _SettledReelText extends StatelessWidget {
     final glyphRow = Row(
       key: const ValueKey('reel_text_settled_glyphs'),
       mainAxisSize: MainAxisSize.min,
-      textDirection: textDirection,
+      textDirection: TextDirection.ltr,
       children: [
-        for (final (index, glyph) in content.glyphs.indexed)
+        for (final index in runMetrics.visualOrder)
           _SettledGlyphSlot(
-            glyph.text,
+            content.glyphs[index].text,
             width: runMetrics.widthAt(index),
             height: runMetrics.height,
-            style: glyph.style,
+            style: content.glyphs[index].style,
             textDirection: textDirection,
             locale: locale,
             strutStyle: strutStyle,
@@ -131,12 +131,12 @@ class _GlyphSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = _GlyphMetrics(
-      fromWidth: slot.from.isEmpty ? 0 : fromMetrics.widthAt(slot.index),
-      toWidth: slot.to.isEmpty ? 0 : toMetrics.widthAt(slot.index),
+      fromWidth: slot.from.isEmpty ? 0 : fromMetrics.widthAt(slot.fromIndex),
+      toWidth: slot.to.isEmpty ? 0 : toMetrics.widthAt(slot.toIndex),
       height: math.max(fromMetrics.height, toMetrics.height),
     );
-    final fromStyle = fromContent.glyphAt(slot.index)?.style;
-    final toStyle = toContent.glyphAt(slot.index)?.style;
+    final fromStyle = fromContent.glyphAt(slot.fromIndex)?.style;
+    final toStyle = toContent.glyphAt(slot.toIndex)?.style;
     final effectiveToStyle = toStyle ?? fromStyle ?? const TextStyle();
     final travelDistance =
         metrics.height + _verticalSlotBleed(metrics.height) * 2;
@@ -162,8 +162,7 @@ class _GlyphSlot extends StatelessWidget {
       metrics.toWidth,
       slot.widthT(progressMs),
     )!;
-    final textColor =
-        effectiveToStyle.color ??
+    final textColor = effectiveToStyle.color ??
         DefaultTextStyle.of(context).style.color ??
         Colors.black;
     final incomingColor = slot.color == null

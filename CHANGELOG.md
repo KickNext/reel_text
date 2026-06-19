@@ -1,5 +1,11 @@
 ## Unreleased
 
+- Added visual-order glyph layout for RTL and mixed-bidi labels while keeping
+  the existing roll width and alignment model.
+- Built bidi rolls from visual-order slots, aligned from the inline end for RTL,
+  so stable glyphs do not need a separate horizontal correction phase.
+- Added regression coverage and a mixed-bidi example recipe for visual checks.
+
 ## 0.1.5
 
 - Corrected the 0.1.4 changelog to remove a mixed-bidi fix claim for

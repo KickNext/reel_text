@@ -729,6 +729,41 @@ void main() {
     expect(_semanticButtonWithLabel('Like'), findsNothing);
 
     await tester.dragUntilVisible(
+      find.byKey(const ValueKey('recipe_mixed_bidi_motion_slot')),
+      recipesList,
+      const Offset(0, -120),
+    );
+    expect(slotHeight('recipe_mixed_bidi_motion_slot'), 62);
+    expect(
+      tester
+          .widget<Directionality>(
+            find.byKey(const ValueKey('recipe_mixed_bidi_directionality')),
+          )
+          .textDirection,
+      TextDirection.rtl,
+    );
+    final mixedBidiText = tester.widget<ReelText>(
+      find.byKey(const ValueKey('recipe_mixed_bidi_text')),
+    );
+    expect(mixedBidiText.textAlign, TextAlign.start);
+    expect(mixedBidiText.locale, const Locale('he'));
+
+    final mixedButton = find.ancestor(
+      of: find.text('Roll mixed'),
+      matching: find.byType(OutlinedButton),
+    );
+    expect(mixedButton, findsOneWidget);
+    tester.widget<OutlinedButton>(mixedButton).onPressed!();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_mixed_bidi_motion_slot')),
+        matching: find.byKey(const ValueKey('reel_text_rolling')),
+      ),
+      findsWidgets,
+    );
+
+    await tester.dragUntilVisible(
       find.byKey(const ValueKey('recipe_rtl_motion_slot')),
       recipesList,
       const Offset(0, -120),
@@ -763,12 +798,14 @@ void main() {
       findsWidgets,
     );
 
-    await tester.dragUntilVisible(
-      find.text('KickNext'),
-      recipesList,
-      const Offset(0, -500),
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('studio_footer')),
+      600,
+      scrollable: find.byType(Scrollable).first,
     );
-    await _expectFooter(tester);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('studio_footer')), findsOneWidget);
+    expect(find.text('KickNext'), findsOneWidget);
   });
 
   testWidgets('editor page tunes ReelText motion', (tester) async {
