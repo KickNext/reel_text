@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.1.6
+
 - Added visual-order glyph layout for RTL and mixed-bidi labels while keeping
   the existing roll width and alignment model.
 - Built bidi rolls from visual-order slots, aligned from the inline end for RTL,
