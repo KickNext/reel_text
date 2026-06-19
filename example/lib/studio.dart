@@ -403,8 +403,7 @@ class _StudioPanelState extends State<StudioPanel> {
 
   @override
   Widget build(BuildContext context) {
-    const outerRadius = 24.0;
-    const innerRadius = 20.0;
+    const radius = 20.0;
     final color = widget.color ?? Studio.surface;
     final borderColor = widget.borderColor ?? Studio.border;
     return MouseRegion(
@@ -414,7 +413,24 @@ class _StudioPanelState extends State<StudioPanel> {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(outerRadius),
+          color: color,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: _isHovered
+                ? borderColor.withValues(alpha: 0.7)
+                : borderColor,
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Studio.text.withValues(alpha: _isHovered ? 0.035 : 0.02),
+              Studio.transparent,
+              _isHovered
+                  ? borderColor.withValues(alpha: 0.025)
+                  : Studio.primary.withValues(alpha: 0.014),
+            ],
+          ),
           boxShadow: [
             BoxShadow(
               color: _isHovered
@@ -425,42 +441,7 @@ class _StudioPanelState extends State<StudioPanel> {
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(outerRadius),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Studio.surfaceRaised.withValues(alpha: 0.52),
-              borderRadius: BorderRadius.circular(outerRadius),
-              border: Border.all(
-                color: _isHovered
-                    ? borderColor.withValues(alpha: 0.5)
-                    : Studio.borderBright.withValues(alpha: 0.34),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(innerRadius),
-                  border: Border.all(color: borderColor),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Studio.text.withValues(alpha: _isHovered ? 0.04 : 0.025),
-                      Studio.transparent,
-                      _isHovered
-                          ? borderColor.withValues(alpha: 0.03)
-                          : Studio.primary.withValues(alpha: 0.018),
-                    ],
-                  ),
-                ),
-                child: Padding(padding: widget.padding, child: widget.child),
-              ),
-            ),
-          ),
-        ),
+        child: Padding(padding: widget.padding, child: widget.child),
       ),
     );
   }

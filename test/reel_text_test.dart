@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -229,6 +230,344 @@ void main() {
       tester.getSize(find.byKey(textKey)),
     );
   });
+
+  testWidgets('settled mixed bidi glyphs follow Flutter visual order', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_bidi_visual_order');
+    const text = 'ETA 12 שלום';
+    const direction = TextDirection.rtl;
+    const style = TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: direction,
+        child: Center(
+          child: ReelText(text, key: reelKey, style: style),
+        ),
+      ),
+    );
+
+    expect(
+      _visibleReelGlyphsLeftToRight(tester, find.byKey(reelKey)),
+      _textPainterGlyphsLeftToRight(
+        text: text,
+        style: style,
+        textDirection: direction,
+      ),
+    );
+  });
+
+  testWidgets('mixed bidi roll keeps unchanged glyphs in visual order', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_bidi_rolling_order');
+    const fromText = 'AB שלום';
+    const toText = 'AC שלום';
+    const direction = TextDirection.rtl;
+    const style = TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 120),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: direction,
+        child: Center(
+          child: ReelText(text, key: reelKey, style: style, options: options),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(fromText));
+    await tester.pumpWidget(frame(toText));
+    await tester.pump(const Duration(milliseconds: 60));
+
+    final actualStableGlyphs = _visibleReelGlyphsLeftToRight(
+      tester,
+      find.byKey(reelKey),
+    ).where((glyph) => glyph != 'B' && glyph != 'C').toList();
+    final expectedStableGlyphs = _textPainterGlyphsLeftToRight(
+      text: toText,
+      style: style,
+      textDirection: direction,
+    ).where((glyph) => glyph != 'C').toList();
+
+    expect(actualStableGlyphs, expectedStableGlyphs);
+  });
+
+  testWidgets('RTL roll keeps source visual order on its first frame', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rtl_first_frame_order');
+    const fromText = 'אבגד';
+    const toText = 'אבג';
+    const direction = TextDirection.rtl;
+    const style = TextStyle(fontSize: 34, fontWeight: FontWeight.w700);
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 140),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: direction,
+        child: Center(
+          child: ReelText(text, key: reelKey, style: style, options: options),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(fromText));
+    final sourceOrder = _visibleReelGlyphsLeftToRight(
+      tester,
+      find.byKey(reelKey),
+    );
+
+    await tester.pumpWidget(frame(toText));
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(
+      _visibleReelGlyphsLeftToRight(tester, find.byKey(reelKey)),
+      sourceOrder,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(
+      _visibleReelGlyphsLeftToRight(tester, find.byKey(reelKey)),
+      _textPainterGlyphsLeftToRight(
+        text: toText,
+        style: style,
+        textDirection: direction,
+      ),
+    );
+  });
+
+  testWidgets('mixed bidi roll keeps source visual order on its first frame', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_mixed_bidi_first_frame_order');
+    const fromText = 'ETA 12 דק';
+    const toText = 'ETA 12';
+    const direction = TextDirection.rtl;
+    const style = TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 140),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: direction,
+        child: Center(
+          child: ReelText(text, key: reelKey, style: style, options: options),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(fromText));
+    final sourceOrder = _visibleReelGlyphsLeftToRight(
+      tester,
+      find.byKey(reelKey),
+    );
+
+    await tester.pumpWidget(frame(toText));
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(
+      _visibleReelGlyphsLeftToRight(tester, find.byKey(reelKey)),
+      sourceOrder,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(
+      _visibleReelGlyphsLeftToRight(tester, find.byKey(reelKey)),
+      _textPainterGlyphsLeftToRight(
+        text: toText,
+        style: style,
+        textDirection: direction,
+      ),
+    );
+  });
+
+  testWidgets(
+    'mixed bidi rolling uses visual slots without positioned correction',
+    (tester) async {
+      const reelKey = ValueKey('reel_mixed_bidi_no_positioned');
+      const fromText = 'ETA 12 דק';
+      const toText = 'ETA 12';
+      const direction = TextDirection.rtl;
+      const style = TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+      const options = ReelTextOptions(
+        duration: Duration(milliseconds: 140),
+        stagger: Duration.zero,
+        exitOffset: Duration.zero,
+        bounce: 0,
+        colorFade: Duration.zero,
+      );
+
+      Widget frame(String text) {
+        return Directionality(
+          textDirection: direction,
+          child: Center(
+            child: SizedBox(
+              width: 280,
+              child: ReelText(
+                text,
+                key: reelKey,
+                textAlign: TextAlign.start,
+                style: style,
+                options: options,
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(frame(fromText));
+      await tester.pumpWidget(frame(toText));
+
+      expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('reel_text_rolling')),
+          matching: find.byType(Positioned),
+        ),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'mixed bidi stable glyphs keep their horizontal positions during roll',
+    (tester) async {
+      const reelKey = ValueKey('reel_mixed_bidi_stable_x');
+      const fromText = 'ETA 12 דק';
+      const toText = 'ETA 12';
+      const direction = TextDirection.rtl;
+      const style = TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+      const options = ReelTextOptions(
+        duration: Duration(milliseconds: 140),
+        stagger: Duration.zero,
+        exitOffset: Duration.zero,
+      );
+
+      Widget frame(String text) {
+        return Directionality(
+          textDirection: direction,
+          child: Center(
+            child: SizedBox(
+              width: 280,
+              child: ReelText(
+                text,
+                key: reelKey,
+                textAlign: TextAlign.start,
+                style: style,
+                options: options,
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(frame(fromText));
+      await tester.pumpWidget(frame(toText));
+
+      final firstFrame = _visibleReelGlyphPositionsLeftToRight(
+        tester,
+        find.byKey(reelKey),
+      );
+
+      await tester.pump(const Duration(milliseconds: 70));
+
+      final midFrame = _visibleReelGlyphPositionsLeftToRight(
+        tester,
+        find.byKey(reelKey),
+      );
+
+      for (final glyph in ['E', 'T', 'A', '1', '2']) {
+        expect(
+          _leftOfGlyph(midFrame, glyph),
+          closeTo(_leftOfGlyph(firstFrame, glyph), 0.01),
+        );
+      }
+    },
+  );
+
+  testWidgets(
+    'mixed bidi final rolling frame matches settled glyph positions',
+    (tester) async {
+      const reelKey = ValueKey('reel_mixed_bidi_final_x');
+      const fromText = 'ETA 12 דק';
+      const toText = 'ETA 12';
+      const direction = TextDirection.rtl;
+      const style = TextStyle(fontSize: 32, fontWeight: FontWeight.w700);
+      const options = ReelTextOptions(
+        duration: Duration(milliseconds: 140),
+        stagger: Duration.zero,
+        exitOffset: Duration.zero,
+      );
+
+      Widget frame(String text) {
+        return Directionality(
+          textDirection: direction,
+          child: Center(
+            child: SizedBox(
+              width: 280,
+              child: ReelText(
+                text,
+                key: reelKey,
+                textAlign: TextAlign.start,
+                style: style,
+                options: options,
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(frame(fromText));
+      await tester.pumpWidget(frame(toText));
+      await tester.pump(const Duration(milliseconds: 219));
+
+      final finalRollingFrame = _visibleReelGlyphPositionsLeftToRight(
+        tester,
+        find.byKey(reelKey),
+      );
+      final finalRollingGlyphs = [
+        for (final entry in finalRollingFrame) entry.text,
+      ];
+
+      expect(
+        finalRollingGlyphs,
+        _textPainterGlyphsLeftToRight(
+          text: toText,
+          style: style,
+          textDirection: direction,
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final settledFrame = _visibleReelGlyphPositionsLeftToRight(
+        tester,
+        find.byKey(reelKey),
+      );
+
+      for (final glyph in ['E', 'T', 'A', '1', '2']) {
+        expect(
+          _leftOfGlyph(finalRollingFrame, glyph),
+          closeTo(_leftOfGlyph(settledFrame, glyph), 0.01),
+        );
+      }
+    },
+  );
 
   testWidgets('settled layout clamps to bounded width without flex overflow', (
     tester,
@@ -962,6 +1301,45 @@ void main() {
     );
     expect(glyphRow.left, closeTo(box.left, 0.01));
   });
+
+  testWidgets(
+    'textAlign start keeps RTL stable glyph anchored during shrinking roll',
+    (tester) async {
+      const options = ReelTextOptions(
+        duration: Duration(milliseconds: 120),
+        stagger: Duration.zero,
+        exitOffset: Duration.zero,
+      );
+
+      Widget wrap(String text) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Center(
+            child: SizedBox(
+              width: 240,
+              child: ReelText(
+                text,
+                textAlign: TextAlign.start,
+                options: options,
+                style: const TextStyle(fontSize: 32),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(wrap('אבגד'));
+      await tester.pumpWidget(wrap('אבג'));
+      await tester.pump(const Duration(milliseconds: 60));
+
+      final duringRight = tester.getRect(find.text('א')).right;
+
+      await tester.pumpAndSettle();
+
+      final settledRight = tester.getRect(find.text('א')).right;
+      expect(duringRight, closeTo(settledRight, 0.01));
+    },
+  );
 
   testWidgets('inherits DefaultTextStyle textAlign for public layout', (
     tester,
@@ -1859,4 +2237,117 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel('Copied'), findsOneWidget);
   });
+}
+
+List<String> _visibleReelGlyphsLeftToRight(WidgetTester tester, Finder scope) {
+  final entries = _visibleReelGlyphPositionsLeftToRight(tester, scope);
+  entries.sort(_compareGlyphPositions);
+  return [for (final entry in entries) entry.text];
+}
+
+List<_GlyphPosition> _visibleReelGlyphPositionsLeftToRight(
+  WidgetTester tester,
+  Finder scope,
+) {
+  final entries = <_GlyphPosition>[];
+  final scopeRect = tester.getRect(scope);
+  final textFinder = find.descendant(of: scope, matching: find.byType(Text));
+
+  for (final element in textFinder.evaluate()) {
+    final widget = element.widget as Text;
+    final text = widget.data;
+    if (text == null || text.trim().isEmpty) {
+      continue;
+    }
+    if (!_isEffectivelyOpaque(element)) {
+      continue;
+    }
+    final rect = tester.getRect(find.byWidget(widget));
+    if (rect.bottom <= scopeRect.top || rect.top >= scopeRect.bottom) {
+      continue;
+    }
+    entries.add(_GlyphPosition(text, rect.left, entries.length));
+  }
+
+  entries.sort(_compareGlyphPositions);
+  return entries;
+}
+
+bool _isEffectivelyOpaque(Element element) {
+  var opaque = true;
+  element.visitAncestorElements((ancestor) {
+    final widget = ancestor.widget;
+    if (widget is Opacity && widget.opacity <= 0.01) {
+      opaque = false;
+      return false;
+    }
+    return true;
+  });
+  return opaque;
+}
+
+double _leftOfGlyph(List<_GlyphPosition> entries, String glyph) {
+  return entries.singleWhere((entry) => entry.text == glyph).left;
+}
+
+List<String> _textPainterGlyphsLeftToRight({
+  required String text,
+  required TextStyle style,
+  required TextDirection textDirection,
+}) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: textDirection,
+    maxLines: 1,
+  )..layout();
+  final entries = <_GlyphPosition>[];
+  var offset = 0;
+  var index = 0;
+
+  for (final rune in text.runes) {
+    final glyph = String.fromCharCode(rune);
+    final start = offset;
+    offset += glyph.length;
+    if (glyph.trim().isEmpty) {
+      index++;
+      continue;
+    }
+    final boxes = painter.getBoxesForSelection(
+      TextSelection(baseOffset: start, extentOffset: offset),
+    );
+    final left = boxes.isEmpty
+        ? math.min(
+            painter
+                .getOffsetForCaret(TextPosition(offset: start), Rect.zero)
+                .dx,
+            painter
+                .getOffsetForCaret(TextPosition(offset: offset), Rect.zero)
+                .dx,
+          )
+        : boxes.fold<double>(
+            double.infinity,
+            (value, box) => math.min(value, math.min(box.left, box.right)),
+          );
+    entries.add(_GlyphPosition(glyph, left, index));
+    index++;
+  }
+
+  entries.sort(_compareGlyphPositions);
+  return [for (final entry in entries) entry.text];
+}
+
+int _compareGlyphPositions(_GlyphPosition a, _GlyphPosition b) {
+  final byLeft = a.left.compareTo(b.left);
+  if (byLeft != 0) {
+    return byLeft;
+  }
+  return a.sourceOrder.compareTo(b.sourceOrder);
+}
+
+class _GlyphPosition {
+  const _GlyphPosition(this.text, this.left, this.sourceOrder);
+
+  final String text;
+  final double left;
+  final int sourceOrder;
 }

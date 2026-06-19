@@ -19,10 +19,17 @@ class _RollPlan {
     required String fromText,
     required String toText,
     required ReelTextOptions options,
+    List<int>? fromVisualOrder,
+    List<int>? toVisualOrder,
+    bool alignVisualOrderFromEnd = false,
   }) {
     final fromChars = fromText.characters.toList();
     final toChars = toText.characters.toList();
-    final maxLen = math.max(fromChars.length, toChars.length);
+    final fromOrder =
+        fromVisualOrder ?? [for (var i = 0; i < fromChars.length; i++) i];
+    final toOrder =
+        toVisualOrder ?? [for (var i = 0; i < toChars.length; i++) i];
+    final maxLen = math.max(fromOrder.length, toOrder.length);
     var maxEndMs = 1;
     // The stagger cascade runs across *changed* slots only, so a diff that
     // touches just the tail (counters, ellipsis dots) starts instantly instead
@@ -31,8 +38,18 @@ class _RollPlan {
     final slots = <_SlotPlan>[];
 
     for (var i = 0; i < maxLen; i++) {
-      final from = i < fromChars.length ? fromChars[i] : '';
-      final to = i < toChars.length ? toChars[i] : '';
+      final fromOrderIndex =
+          alignVisualOrderFromEnd ? i - (maxLen - fromOrder.length) : i;
+      final toOrderIndex =
+          alignVisualOrderFromEnd ? i - (maxLen - toOrder.length) : i;
+      final fromIndex = fromOrderIndex >= 0 && fromOrderIndex < fromOrder.length
+          ? fromOrder[fromOrderIndex]
+          : -1;
+      final toIndex = toOrderIndex >= 0 && toOrderIndex < toOrder.length
+          ? toOrder[toOrderIndex]
+          : -1;
+      final from = fromIndex >= 0 ? fromChars[fromIndex] : '';
+      final to = toIndex >= 0 ? toChars[toIndex] : '';
       final unchanged = from == to && (options.skipUnchanged || from.isEmpty);
       final isTail = to.isEmpty;
       final durationMs = math.max(
@@ -57,8 +74,7 @@ class _RollPlan {
       // outgoing one; an empty slot fills immediately.
       final exitOffsetMs = from.isEmpty ? 0 : options.exitOffset.inMilliseconds;
       final color = options.colorBuilder?.call(i, maxLen) ?? options.color;
-      final endMs =
-          baseMs +
+      final endMs = baseMs +
           exitOffsetMs +
           durationMs +
           (color == null ? 0 : options.colorFade.inMilliseconds);
@@ -69,6 +85,8 @@ class _RollPlan {
       slots.add(
         _SlotPlan(
           index: i,
+          fromIndex: fromIndex,
+          toIndex: toIndex,
           from: from,
           to: to,
           changed: !unchanged,
@@ -99,6 +117,8 @@ class _RollPlan {
 class _SlotPlan {
   const _SlotPlan({
     required this.index,
+    required int fromIndex,
+    required int toIndex,
     required this.from,
     required this.to,
     required this.changed,
@@ -111,9 +131,14 @@ class _SlotPlan {
     required this.color,
     required this.tiltRadians,
     required this.overshoot,
-  });
+  })  : _fromIndex = fromIndex,
+        _toIndex = toIndex;
 
   final int index;
+  // Nullable only for hot reload: slots created before these fields existed
+  // should keep rendering by falling back to the original logical index.
+  final int? _fromIndex;
+  final int? _toIndex;
   final String from;
   final String to;
   final bool changed;
@@ -126,6 +151,10 @@ class _SlotPlan {
   final Color? color;
   final double tiltRadians;
   final double overshoot;
+
+  int get fromIndex => _fromIndex ?? index;
+
+  int get toIndex => _toIndex ?? index;
 
   double outT(double nowMs) => _curved(nowMs, baseMs, durationMs);
 

@@ -54,6 +54,12 @@ class RecipesPage extends StatelessWidget {
         code: _spamSafeCode,
       ),
       const _RecipeCard(
+        title: 'Mixed bidi',
+        blurb: 'Latin fragments and numbers keep their visual order in RTL UI.',
+        preview: _MixedBidiPreview(),
+        code: _mixedBidiCode,
+      ),
+      const _RecipeCard(
         title: 'RTL script',
         blurb: 'Right-to-left labels roll through full words without jumping.',
         preview: _RtlPreview(),
@@ -108,16 +114,13 @@ class _RecipeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 880;
-    final previewBox = DecoratedBox(
-      decoration: BoxDecoration(
-        color: Studio.surfaceRaised,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Studio.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Center(child: preview),
-      ),
+    final previewBlock = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Center(child: preview),
+    );
+    final desktopPreviewBox = ConstrainedBox(
+      constraints: BoxConstraints(minHeight: _previewHeightForCode(code)),
+      child: previewBlock,
     );
     final codeBox = CodeView(code: code);
 
@@ -139,14 +142,14 @@ class _RecipeCard extends StatelessWidget {
           Text(blurb, style: Studio.body(size: 12.5)),
           const SizedBox(height: 16),
           if (compact) ...[
-            previewBox,
+            previewBlock,
             const SizedBox(height: 12),
             codeBox,
           ] else
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 2, child: previewBox),
+                Expanded(flex: 2, child: desktopPreviewBox),
                 const SizedBox(width: 14),
                 Expanded(flex: 3, child: codeBox),
               ],
@@ -155,6 +158,11 @@ class _RecipeCard extends StatelessWidget {
       ),
     );
   }
+}
+
+double _previewHeightForCode(String code) {
+  final lines = '\n'.allMatches(code).length + 1;
+  return (52 + lines * 19.0).clamp(148.0, 380.0);
 }
 
 class _RecipeMotionSlot extends StatelessWidget {
@@ -832,7 +840,102 @@ class _SpamSafePreviewState extends State<_SpamSafePreview> {
 }
 
 // ---------------------------------------------------------------------------
-// 7. RTL script
+// 7. Mixed bidi
+// ---------------------------------------------------------------------------
+
+const _mixedBidiCode = '''
+final label = ReelTextController(initialText: 'ETA 12 דק');
+
+Directionality(
+  textDirection: TextDirection.rtl,
+  child: SizedBox(
+    width: 280,
+    child: ReelText.controller(
+      controller: label,
+      textAlign: TextAlign.start,
+      locale: const Locale('he'),
+    ),
+  ),
+);
+
+// On tap:
+label.set('Gate B4 פתוח');''';
+
+class _MixedBidiPreview extends StatefulWidget {
+  const _MixedBidiPreview();
+
+  @override
+  State<_MixedBidiPreview> createState() => _MixedBidiPreviewState();
+}
+
+class _MixedBidiPreviewState extends State<_MixedBidiPreview> {
+  static const _labels = ['ETA 12 דק', 'ETA 09 דק', 'Gate B4 פתוח'];
+
+  late final ReelTextController _label;
+  var _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _label = ReelTextController(initialText: _labels.first);
+  }
+
+  @override
+  void dispose() {
+    _label.dispose();
+    super.dispose();
+  }
+
+  void _roll() {
+    _index = (_index + 1) % _labels.length;
+    _label.set(
+      _labels[_index],
+      options: const ReelTextOptions(direction: ReelTextDirection.up),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _RecipeMotionSlot(
+          slotKey: const ValueKey('recipe_mixed_bidi_motion_slot'),
+          width: 330,
+          height: 62,
+          child: Directionality(
+            key: const ValueKey('recipe_mixed_bidi_directionality'),
+            textDirection: TextDirection.rtl,
+            child: SizedBox(
+              width: 280,
+              child: ReelText.controller(
+                key: const ValueKey('recipe_mixed_bidi_text'),
+                controller: _label,
+                textAlign: TextAlign.start,
+                locale: const Locale('he'),
+                style: TextStyle(
+                  color: Studio.text,
+                  fontSize: 25,
+                  fontWeight: FontWeight.w800,
+                  height: 1.12,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        StudioButton(
+          onPressed: _roll,
+          filled: false,
+          child: const Text('Roll mixed'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 8. RTL script
 // ---------------------------------------------------------------------------
 
 const _rtlCode = '''
