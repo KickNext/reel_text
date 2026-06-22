@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:reel_text/reel_text.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'studio.dart';
 
@@ -1783,22 +1785,30 @@ class _InstallBlock extends StatefulWidget {
 class _InstallBlockState extends State<_InstallBlock> {
   static const _packageCommand = 'flutter pub add reel_text';
   static const _skillCommand = 'skills get reel_text';
+  static final _skillsUri = Uri.parse('https://pub.dev/packages/skills');
 
   late final ReelTextController _packageLabel;
   late final ReelTextController _skillLabel;
+  late final TapGestureRecognizer _skillsLink;
 
   @override
   void initState() {
     super.initState();
     _packageLabel = ReelTextController(initialText: 'Copy');
     _skillLabel = ReelTextController(initialText: 'Copy');
+    _skillsLink = TapGestureRecognizer()..onTap = _openSkills;
   }
 
   @override
   void dispose() {
     _packageLabel.dispose();
     _skillLabel.dispose();
+    _skillsLink.dispose();
     super.dispose();
+  }
+
+  void _openSkills() {
+    unawaited(launchUrl(_skillsUri));
   }
 
   void _copy(String command, ReelTextController label) {
@@ -1827,6 +1837,7 @@ class _InstallBlockState extends State<_InstallBlock> {
     required VoidCallback onCopy,
     required Key buttonKey,
     required Key labelSlotKey,
+    bool linkSkills = false,
   }) {
     final label = SizedBox(
       width: 62,
@@ -1852,13 +1863,9 @@ class _InstallBlockState extends State<_InstallBlock> {
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(
-            commandText,
-            style: Studio.mono(
-              size: 13,
-              color: Studio.text.withValues(alpha: 0.9),
-              weight: FontWeight.w600,
-            ),
+          child: _CommandText(
+            text: commandText,
+            skillsRecognizer: linkSkills ? _skillsLink : null,
           ),
         ),
       ),
@@ -1962,7 +1969,53 @@ class _InstallBlockState extends State<_InstallBlock> {
             onCopy: () => _copy(_skillCommand, _skillLabel),
             buttonKey: const ValueKey('install_skill_copy_button'),
             labelSlotKey: const ValueKey('install_skill_copy_label_slot'),
+            linkSkills: true,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommandText extends StatelessWidget {
+  const _CommandText({required this.text, this.skillsRecognizer});
+
+  final String text;
+  final TapGestureRecognizer? skillsRecognizer;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Studio.mono(
+      size: 13,
+      color: Studio.text.withValues(alpha: 0.9),
+      weight: FontWeight.w600,
+    );
+    final recognizer = skillsRecognizer;
+    if (recognizer == null || !text.startsWith('skills ')) {
+      return Text(text, style: baseStyle);
+    }
+
+    final linkColor = Studio.info;
+    final linkStyle = baseStyle.copyWith(
+      color: linkColor,
+      fontWeight: FontWeight.w800,
+      decoration: TextDecoration.underline,
+      decorationColor: linkColor,
+      decorationThickness: 2.4,
+    );
+
+    return RichText(
+      key: const ValueKey('install_skill_command_text'),
+      text: TextSpan(
+        style: baseStyle,
+        children: [
+          TextSpan(
+            text: 'skills',
+            style: linkStyle,
+            recognizer: recognizer,
+            mouseCursor: SystemMouseCursors.click,
+          ),
+          const TextSpan(text: ' get reel_text'),
         ],
       ),
     );
