@@ -24,7 +24,8 @@ Run it with:
 flutter run
 ```
 
-Install the optional agent skill for this app:
+Install the optional agent skill for this app with the Dart
+[`skills`](https://pub.dev/packages/skills) CLI:
 
 ```bash
 dart pub global activate skills
