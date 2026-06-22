@@ -168,7 +168,7 @@ await label.runWhile(
 
 ## Pressure Test Evidence
 
-Recorded on 2026-06-22 for the `0.2.0` package release. This was a manual pressure review against the skill contract, plus a Dart `skills` CLI install smoke test from a temporary Flutter app using this checkout as a path dependency.
+Recorded on 2026-06-22 for the `0.2.0` package release. This combines a manual pressure review against the skill contract, a Dart `skills` CLI install smoke test, and a read-only Codex agent smoke test from a temporary Flutter app using this checkout as a path dependency.
 
 Scenario outcomes:
 
@@ -182,11 +182,18 @@ Scenario outcomes:
 CLI install evidence:
 
 - Created a temporary Flutter app.
-- Added `reel_text` from `/Users/kicknext/Pets/reel_text` as a path dependency.
+- Added `reel_text` from this checkout as a path dependency.
 - Ran `skills get reel_text --ide codex`; the CLI discovered and installed `reel_text-usage`.
 - Ran `skills list -C <temporary app>`; output listed `generic -> reel_text -> reel_text-usage`.
 
-Release note: this evidence validates the optional agent skill and install path. It does not indicate runtime API or widget behavior changes.
+Codex agent smoke evidence:
+
+- Ran a read-only `codex exec` prompt from the temporary app: `Use $reel_text-usage. Do not edit files. Review this Flutter request: "Make every Text widget in this app animated."`
+- The agent found and read the package-bundled `skills/reel_text-usage/SKILL.md`, scanned the stock counter app, and rejected broad animation.
+- The agent identified only the changing counter value as a qualifying stateful target and selected `ReelText('$_counter')`, while keeping the app title and explanatory sentence as plain `Text`.
+- No files were edited during the smoke test.
+
+Release note: this evidence validates the optional agent skill, install path, and one representative Codex agent decision path. It does not indicate runtime API or widget behavior changes.
 
 ## Verification
 
