@@ -41,12 +41,7 @@ For an app that does not already depend on the package:
 flutter pub add reel_text
 ```
 
-If `pubspec.yaml` is carefully grouped, commented, sorted, or otherwise hand-structured, preserve that structure instead of blindly running a command that may rewrite it. Add only the dependency line under `dependencies`, then run `flutter pub get`:
-
-```yaml
-dependencies:
-  reel_text: ^0.1.6
-```
+If `pubspec.yaml` is carefully grouped, commented, sorted, or otherwise hand-structured, preserve that structure instead of blindly running a command that may rewrite it. Add `reel_text` under `dependencies` using the current version constraint from pub.dev, then run `flutter pub get`. Do not copy a hardcoded version from this skill.
 
 Then import:
 
