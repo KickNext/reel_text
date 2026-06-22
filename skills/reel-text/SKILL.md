@@ -28,6 +28,7 @@ For code changes, report:
 
 - The text transition being animated.
 - The API chosen and why.
+- How the dependency was added or confirmed.
 - The layout constraint that prevents size jumps.
 - The lifecycle owner for any controller.
 - The verification command run.
@@ -40,6 +41,13 @@ For an app that does not already depend on the package:
 flutter pub add reel_text
 ```
 
+If `pubspec.yaml` is carefully grouped, commented, sorted, or otherwise hand-structured, preserve that structure instead of blindly running a command that may rewrite it. Add only the dependency line under `dependencies`, then run `flutter pub get`:
+
+```yaml
+dependencies:
+  reel_text: ^0.1.6
+```
+
 Then import:
 
 ```dart
@@ -47,6 +55,16 @@ import 'package:reel_text/reel_text.dart';
 ```
 
 Do not add the dependency just because the task mentions animation. First find a good candidate transition.
+
+## Source Lookup
+
+Before guessing APIs, inspect the package source available to the project:
+
+- If the project already ran `flutter pub get`, read `.dart_tool/package_config.json` and use the `reel_text` `rootUri`/`packageUri` to find `lib/`.
+- If package config is unavailable, check `${PUB_CACHE:-$HOME/.pub-cache}/hosted/pub.dev/reel_text-<version>/lib/`.
+- If working inside this repository, use the local `lib/` source.
+
+Use cached source as the API reference when docs and installed version may differ.
 
 ## Reject Plainly
 
@@ -131,12 +149,15 @@ await label.runWhile(
 - Use `Directionality` or `textDirection` when the label is outside an already directional subtree.
 - Preload async fonts before the first `ReelText` frame when the app relies on dynamically loaded fonts.
 - Validate `ReelTextEditReplacement` ranges; they must be in bounds and non-overlapping.
+- Preserve existing `pubspec.yaml` comments, grouping, ordering, and constraints when adding `reel_text`; do not normalize unrelated dependencies.
 
 ## Red Flags
 
 - Replacing many unrelated `Text` widgets in one pass.
 - Creating any `ReelTextController` inside `build`.
 - Adding `reel_text` to a project before identifying a qualifying transition.
+- Rewriting a carefully structured `pubspec.yaml` just to add one dependency.
+- Inventing API calls without checking local source or the pub cache when the package is installed.
 - Animating body copy, long errors, legal/help text, or static navigation labels.
 - Putting a rolling label in a button without a stable slot width.
 - Reimplementing waiting timers when `runWhile()` or `startWaiting()` matches the lifecycle.
