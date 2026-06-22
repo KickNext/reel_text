@@ -1,5 +1,18 @@
 ## Unreleased
 
+## 0.2.0
+
+- Added the optional `reel_text-usage` AI agent skill for choosing meaningful
+  short text transitions, rejecting broad decorative animation requests, and
+  selecting the narrowest `reel_text` API.
+- Documented installation through the Dart `skills` CLI and verified the local
+  path-dependency install flow.
+- Recorded pressure-scenario evidence for copy feedback, async labels, hero
+  text, editable corrections, and RTL/mixed-bidi guidance.
+- Moved example app details out of the root README and kept the publish archive
+  small by excluding generated platform scaffolds and the root hero asset.
+- No runtime API changes.
+
 ## 0.1.6
 
 - Added visual-order glyph layout for RTL and mixed-bidi labels while keeping

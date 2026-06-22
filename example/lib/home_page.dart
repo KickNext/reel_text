@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:reel_text/reel_text.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'studio.dart';
 
@@ -1781,26 +1783,39 @@ class _InstallBlock extends StatefulWidget {
 }
 
 class _InstallBlockState extends State<_InstallBlock> {
-  late final ReelTextController _label;
+  static const _packageCommand = 'flutter pub add reel_text';
+  static const _skillCommand = 'skills get reel_text';
+  static const _controlHeight = 44.0;
+  static final _skillsUri = Uri.parse('https://pub.dev/packages/skills');
+
+  late final ReelTextController _packageLabel;
+  late final ReelTextController _skillLabel;
+  late final TapGestureRecognizer _skillsLink;
 
   @override
   void initState() {
     super.initState();
-    _label = ReelTextController(initialText: 'Copy');
+    _packageLabel = ReelTextController(initialText: 'Copy');
+    _skillLabel = ReelTextController(initialText: 'Copy');
+    _skillsLink = TapGestureRecognizer()..onTap = _openSkills;
   }
 
   @override
   void dispose() {
-    _label.dispose();
+    _packageLabel.dispose();
+    _skillLabel.dispose();
+    _skillsLink.dispose();
     super.dispose();
   }
 
-  void _copy() {
-    unawaited(
-      Clipboard.setData(const ClipboardData(text: 'flutter pub add reel_text')),
-    );
+  void _openSkills() {
+    unawaited(launchUrl(_skillsUri));
+  }
+
+  void _copy(String command, ReelTextController label) {
+    unawaited(Clipboard.setData(ClipboardData(text: command)));
     // Keep the flash on the button's contrast color instead of tinting it.
-    _label.flash(
+    label.flash(
       'Copied',
       options: const ReelTextFlashOptions(
         enter: ReelTextOptions(
@@ -1816,14 +1831,20 @@ class _InstallBlockState extends State<_InstallBlock> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 900;
-
+  Widget _row({
+    required String labelText,
+    required String commandText,
+    required ReelTextController controller,
+    required VoidCallback onCopy,
+    required Key commandKey,
+    required Key buttonKey,
+    required Key labelSlotKey,
+    bool linkSkills = false,
+  }) {
     final label = SizedBox(
       width: 62,
       child: Text(
-        'Install',
+        labelText,
         style: Studio.mono(
           size: 11,
           color: Studio.faint,
@@ -1833,23 +1854,26 @@ class _InstallBlockState extends State<_InstallBlock> {
       ),
     );
 
-    final command = DecoratedBox(
-      decoration: BoxDecoration(
-        color: Studio.inset,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Studio.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'flutter pub add reel_text',
-            style: Studio.mono(
-              size: 13,
-              color: Studio.text.withValues(alpha: 0.9),
-              weight: FontWeight.w600,
+    final command = SizedBox(
+      key: commandKey,
+      height: _controlHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Studio.inset,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Studio.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: _CommandText(
+                text: commandText,
+                skillsRecognizer: linkSkills ? _skillsLink : null,
+              ),
             ),
           ),
         ),
@@ -1857,28 +1881,29 @@ class _InstallBlockState extends State<_InstallBlock> {
     );
 
     final copyButton = SizedBox(
-      key: const ValueKey('install_copy_button'),
+      key: buttonKey,
       width: 88,
-      height: 48,
+      height: _controlHeight,
       child: FilledButton(
-        onPressed: _copy,
+        onPressed: onCopy,
         style: FilledButton.styleFrom(
           backgroundColor: Studio.primary,
           foregroundColor: Studio.onAccent(Studio.primary),
           padding: EdgeInsets.zero,
-          minimumSize: const Size(88, 48),
+          minimumSize: const Size(88, 0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: ClipRect(
           child: SizedBox(
-            key: const ValueKey('install_copy_label_slot'),
+            key: labelSlotKey,
             width: 56,
             height: 34,
             child: Center(
               child: ReelText.controller(
-                controller: _label,
+                controller: controller,
                 textAlign: TextAlign.center,
                 style: Studio.mono(
                   size: 12,
@@ -1894,31 +1919,117 @@ class _InstallBlockState extends State<_InstallBlock> {
       ),
     );
 
-    return _QuietPanel(
-      key: const ValueKey('install_block_panel'),
-      padding: EdgeInsets.all(compact ? 14 : 16),
-      color: Studio.surface.withValues(alpha: 0.72),
-      child: compact
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 420) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              label,
+              const SizedBox(width: 16),
+              Expanded(child: command),
+              const SizedBox(width: 10),
+              copyButton,
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            label,
+            const SizedBox(height: 10),
+            Row(
               children: [
-                label,
-                const SizedBox(height: 10),
-                command,
-                const SizedBox(height: 10),
-                copyButton,
-              ],
-            )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                label,
-                const SizedBox(width: 16),
-                command,
+                Expanded(child: command),
                 const SizedBox(width: 10),
                 copyButton,
               ],
             ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 900;
+
+    return _QuietPanel(
+      key: const ValueKey('install_block_panel'),
+      padding: EdgeInsets.all(compact ? 14 : 16),
+      color: Studio.surface.withValues(alpha: 0.72),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _row(
+            labelText: 'Install',
+            commandText: _packageCommand,
+            controller: _packageLabel,
+            onCopy: () => _copy(_packageCommand, _packageLabel),
+            commandKey: const ValueKey('install_command_block'),
+            buttonKey: const ValueKey('install_copy_button'),
+            labelSlotKey: const ValueKey('install_copy_label_slot'),
+          ),
+          SizedBox(height: compact ? 14 : 10),
+          _row(
+            labelText: 'AI skill',
+            commandText: _skillCommand,
+            controller: _skillLabel,
+            onCopy: () => _copy(_skillCommand, _skillLabel),
+            commandKey: const ValueKey('install_skill_command_block'),
+            buttonKey: const ValueKey('install_skill_copy_button'),
+            labelSlotKey: const ValueKey('install_skill_copy_label_slot'),
+            linkSkills: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommandText extends StatelessWidget {
+  const _CommandText({required this.text, this.skillsRecognizer});
+
+  final String text;
+  final TapGestureRecognizer? skillsRecognizer;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Studio.mono(
+      size: 13,
+      color: Studio.text.withValues(alpha: 0.9),
+      weight: FontWeight.w600,
+    );
+    final recognizer = skillsRecognizer;
+    if (recognizer == null || !text.startsWith('skills ')) {
+      return Text(text, style: baseStyle);
+    }
+
+    final linkColor = Studio.info;
+    final linkStyle = baseStyle.copyWith(
+      color: linkColor,
+      fontWeight: FontWeight.w800,
+      decoration: TextDecoration.underline,
+      decorationColor: linkColor,
+      decorationThickness: 2.4,
+    );
+
+    return RichText(
+      key: const ValueKey('install_skill_command_text'),
+      text: TextSpan(
+        style: baseStyle,
+        children: [
+          TextSpan(
+            text: 'skills',
+            style: linkStyle,
+            recognizer: recognizer,
+            mouseCursor: SystemMouseCursors.click,
+          ),
+          const TextSpan(text: ' get reel_text'),
+        ],
+      ),
     );
   }
 }

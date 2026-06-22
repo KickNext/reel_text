@@ -27,6 +27,9 @@ migrate_working_dir/
 **/doc/api/
 .dart_tool/
 .flutter-plugins-dependencies
+.agent/
+.agents/
+.dart_skills/
 /build/
 /coverage/
 example/output/

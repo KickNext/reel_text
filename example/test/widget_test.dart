@@ -442,9 +442,60 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('install_block_frame'))).width,
       lessThanOrEqualTo(520),
     );
+    final installCommandBlock = find.byKey(
+      const ValueKey('install_command_block'),
+    );
+    final installSkillCommandBlock = find.byKey(
+      const ValueKey('install_skill_command_block'),
+    );
     expect(
       tester.getSize(find.byKey(const ValueKey('install_copy_button'))).height,
-      48,
+      tester.getSize(installCommandBlock).height,
+    );
+    expect(
+      (tester.getCenter(find.byKey(const ValueKey('install_copy_button'))).dy -
+              tester.getCenter(find.text('flutter pub add reel_text')).dy)
+          .abs(),
+      lessThan(8),
+    );
+    final skillCommand = tester.widget<RichText>(
+      find.byKey(const ValueKey('install_skill_command_text')),
+    );
+    final skillCommandSpan = skillCommand.text as TextSpan;
+    final skillCommandFirst = skillCommandSpan.children!.first as TextSpan;
+    final skillCommandLast = skillCommandSpan.children!.last as TextSpan;
+    expect(skillCommandSpan.toPlainText(), 'skills get reel_text');
+    expect(skillCommandFirst.recognizer, isNotNull);
+    expect(skillCommandFirst.text, 'skills');
+    expect(skillCommandFirst.style?.color, Studio.info);
+    expect(skillCommandFirst.style?.decoration, TextDecoration.underline);
+    expect(skillCommandFirst.style?.decorationThickness, 2.4);
+    expect(skillCommandLast.text, ' get reel_text');
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('install_skill_copy_button')))
+          .height,
+      tester.getSize(installSkillCommandBlock).height,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('install_skill_copy_label_slot')))
+          .height,
+      34,
+    );
+    expect(
+      (tester
+                  .getCenter(
+                    find.byKey(const ValueKey('install_skill_copy_button')),
+                  )
+                  .dy -
+              tester
+                  .getCenter(
+                    find.byKey(const ValueKey('install_skill_command_text')),
+                  )
+                  .dy)
+          .abs(),
+      lessThan(8),
     );
     expect(
       tester
@@ -544,10 +595,19 @@ void main() {
     final actions = tester.getRect(
       find.byKey(const ValueKey('app_bar_actions')),
     );
+    final tabsFrame = tester.getRect(
+      find.byKey(const ValueKey('page_tabs_frame')),
+    );
+    final tabsRail = tester.getRect(
+      find.byKey(const ValueKey('page_tabs_rail')),
+    );
 
     expect(title.left, closeTo(topFrame.left + 14, 0.01));
     expect(actions.right, closeTo(topFrame.right - 14, 0.01));
     expect(title.right, lessThan(actions.left));
+    expect(tabsFrame.width, topFrame.width - 28);
+    expect(tabsRail.width, lessThan(tabsFrame.width * 0.72));
+    expect(tabsRail.center.dx, closeTo(tabsFrame.center.dx, 0.01));
   });
 
   testWidgets('home try-it strip drives a live ReelText roll', (tester) async {
