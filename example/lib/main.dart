@@ -567,44 +567,32 @@ class _PageTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visualTabs = Row(
-      mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+      mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < pageNames.length; i++)
-          if (compact)
-            Expanded(
-              child: _PageTabVisual(
-                label: pageNames[i],
-                selected: i == selected,
-              ),
-            )
-          else
-            _PageTabVisual(label: pageNames[i], selected: i == selected),
+          _PageTabVisual(
+            label: pageNames[i],
+            selected: i == selected,
+            compact: compact,
+          ),
       ],
     );
     final hitTargets = Row(
-      mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+      mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < pageNames.length; i++)
-          if (compact)
-            Expanded(
-              child: _PageTabHitTarget(
-                key: ValueKey('page_tab_${pageNames[i].toLowerCase()}'),
-                label: pageNames[i],
-                selected: i == selected,
-                onTap: () => onPageChanged(i),
-              ),
-            )
-          else
-            _PageTabHitTarget(
-              key: ValueKey('page_tab_${pageNames[i].toLowerCase()}'),
-              label: pageNames[i],
-              selected: i == selected,
-              onTap: () => onPageChanged(i),
-            ),
+          _PageTabHitTarget(
+            key: ValueKey('page_tab_${pageNames[i].toLowerCase()}'),
+            label: pageNames[i],
+            selected: i == selected,
+            compact: compact,
+            onTap: () => onPageChanged(i),
+          ),
       ],
     );
 
     return SizedBox(
+      key: const ValueKey('page_tabs_frame'),
       height: 48,
       child: Stack(
         alignment: Alignment.center,
@@ -612,6 +600,7 @@ class _PageTabs extends StatelessWidget {
           ExcludeSemantics(
             child: Center(
               child: DecoratedBox(
+                key: const ValueKey('page_tabs_rail'),
                 decoration: BoxDecoration(
                   color: Studio.inset.withValues(alpha: 0.88),
                   borderRadius: BorderRadius.circular(999),
@@ -634,10 +623,15 @@ class _PageTabs extends StatelessWidget {
 }
 
 class _PageTabVisual extends StatelessWidget {
-  const _PageTabVisual({required this.label, required this.selected});
+  const _PageTabVisual({
+    required this.label,
+    required this.selected,
+    required this.compact,
+  });
 
   final String label;
   final bool selected;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -650,7 +644,10 @@ class _PageTabVisual extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 10 : 16,
+          vertical: 9,
+        ),
         child: Text(
           label,
           maxLines: 1,
@@ -673,11 +670,13 @@ class _PageTabHitTarget extends StatelessWidget {
     super.key,
     required this.label,
     required this.selected,
+    required this.compact,
     required this.onTap,
   });
 
   final String label;
   final bool selected;
+  final bool compact;
   final VoidCallback onTap;
 
   @override
@@ -696,7 +695,11 @@ class _PageTabHitTarget extends StatelessWidget {
             child: Center(
               child: Opacity(
                 opacity: 0,
-                child: _PageTabVisual(label: label, selected: selected),
+                child: _PageTabVisual(
+                  label: label,
+                  selected: selected,
+                  compact: compact,
+                ),
               ),
             ),
           ),

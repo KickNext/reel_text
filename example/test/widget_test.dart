@@ -595,10 +595,19 @@ void main() {
     final actions = tester.getRect(
       find.byKey(const ValueKey('app_bar_actions')),
     );
+    final tabsFrame = tester.getRect(
+      find.byKey(const ValueKey('page_tabs_frame')),
+    );
+    final tabsRail = tester.getRect(
+      find.byKey(const ValueKey('page_tabs_rail')),
+    );
 
     expect(title.left, closeTo(topFrame.left + 14, 0.01));
     expect(actions.right, closeTo(topFrame.right - 14, 0.01));
     expect(title.right, lessThan(actions.left));
+    expect(tabsFrame.width, topFrame.width - 28);
+    expect(tabsRail.width, lessThan(tabsFrame.width * 0.72));
+    expect(tabsRail.center.dx, closeTo(tabsFrame.center.dx, 0.01));
   });
 
   testWidgets('home try-it strip drives a live ReelText roll', (tester) async {
