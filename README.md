@@ -33,11 +33,7 @@ Then run:
 flutter pub get
 ```
 
-The package root supports Dart 3.2.0 and Flutter 3.16.0 and newer.
-
-The included showcase app lives under `example/` and has its own SDK and
-dependency setup. Demo-only dependencies such as `http`, `url_launcher`,
-`flutter_svg`, and `google_fonts` are scoped there.
+The package supports Dart 3.2.0 and Flutter 3.16.0 and newer.
 
 Then import it:
 
@@ -330,9 +326,6 @@ controller.animateReplacements(
 );
 ```
 
-The example app uses this controller in the Editor target input so preset
-labels can roll into place before the text field commits the replacement.
-
 For custom editors, `beginReplacements()` can stage inline replacement widgets,
 `animateReplacements()` rolls them to their target text, `replacementText()`
 previews the committed string, and `commitReplacements()` or
@@ -346,10 +339,6 @@ When the platform requests reduced motion
 (`MediaQuery.disableAnimationsOf(context)`), `ReelText` snaps to the target
 text instantly instead of rolling. Opt out per widget with
 `respectDisableAnimations: false`.
-
-The example app has widget coverage for Flutter's Android/iOS tap target,
-labeled target, and text contrast guidelines across desktop and mobile layouts,
-plus a smoke test at 200% text scaling.
 
 ## Dynamic fonts
 
@@ -390,13 +379,4 @@ const ReelTextOptions().reversed();
 const ReelTextOptions().withColor(Colors.green);
 const ReelTextOptions().withChromatic(from: 80);
 const ReelTextOptions().withoutColor();
-```
-
-## Example app
-
-Run the included example:
-
-```bash
-cd example
-flutter run
 ```
