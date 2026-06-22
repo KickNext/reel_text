@@ -23,6 +23,19 @@ imperative `flash()` calls stay safe under rapid button taps.
 flutter pub add reel_text
 ```
 
+Or add the dependency manually if you keep `pubspec.yaml` organized by hand:
+
+```yaml
+dependencies:
+  reel_text: ^0.1.6
+```
+
+Then run:
+
+```bash
+flutter pub get
+```
+
 The package supports Dart 3.2.0 and Flutter 3.16.0 and newer. The included
 showcase app tracks current stable Flutter because it uses modern demo-only UI
 APIs.
@@ -49,6 +62,14 @@ Install with the Agent Skills CLI:
 ```bash
 npx skills add KickNext/reel_text --skill reel-text
 ```
+
+Update an installed skill after this repository changes:
+
+```bash
+npx skills update reel-text --project
+```
+
+Use `--global` instead of `--project` if you installed the skill globally.
 
 Or install the
 [`skills/reel-text`](https://github.com/KickNext/reel_text/tree/main/skills/reel-text)
@@ -383,32 +404,4 @@ Run the included example:
 ```bash
 cd example
 flutter run
-```
-
-The example app is a showcase, not the package compatibility floor. It targets
-current stable Flutter separately from the library's Dart 3.2.0 and Flutter
-3.16.0 minimum.
-
-The example has three tabs:
-
-- **Home**: a self-running, choreographed presentation of the core motion
-  patterns, package metadata, install flow, counters, async labels, and inline
-  correction moments.
-- **Recipes**: live previews with copy-ready code for common integrations,
-  including RTL and mixed-bidi labels.
-- **Editor**: a motion workbench with a target input, direction/color/timing
-  controls, and a `ReelText.controller` preview.
-
-Build the web demo with:
-
-```bash
-cd example
-flutter build web
-```
-
-For the public GitHub Pages path, build with:
-
-```bash
-cd example
-flutter build web --base-href "/reel_text/"
 ```
