@@ -1,5 +1,15 @@
 ## Unreleased
 
+## 0.2.1
+
+- Renamed the optional agent skill to the spec-compliant `reel-text`
+  name and matching folder.
+- Switched skill install docs and the example copy command to the
+  `npx skills add ... --agent universal` flow used by the official Flutter and
+  Dart skill repositories.
+- Restored full-height tap targets for the example install copy buttons and
+  skill command link.
+
 ## 0.2.0
 
 - Added the optional `reel_text-usage` AI agent skill for choosing meaningful

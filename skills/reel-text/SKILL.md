@@ -1,5 +1,5 @@
 ---
-name: reel_text-usage
+name: reel-text
 description: "Use when adding, reviewing, or refactoring Flutter UI that may use reel_text for compact rolling text: command feedback, async/status labels, counters, rotating short phrases, styled TextSpan phrases, or editable inline corrections. Also use when deciding whether plain Text is better or installing reel_text."
 ---
 
@@ -170,6 +170,14 @@ await label.runWhile(
 
 Recorded on 2026-06-22 for the `0.2.0` package release. This combines a manual pressure review against the skill contract, a Dart `skills` CLI install smoke test, and a read-only Codex agent smoke test from a temporary Flutter app using this checkout as a path dependency.
 
+Packaging correction for `0.2.1`: the installed skill name is `reel-text`
+so it matches the shared Agent Skills naming rule of lowercase letters,
+numbers, and hyphens. Install from the GitHub repository with:
+
+```bash
+npx skills add KickNext/reel_text --skill reel-text --agent universal --yes
+```
+
 Scenario outcomes:
 
 - "Make the app text animated" -> reject broad replacement; only consider one or two short stateful labels where a change communicates state.
@@ -183,13 +191,18 @@ CLI install evidence:
 
 - Created a temporary Flutter app.
 - Added `reel_text` from this checkout as a path dependency.
-- Ran `skills get reel_text --ide codex`; the CLI discovered and installed `reel_text-usage`.
-- Ran `skills list -C <temporary app>`; output listed `generic -> reel_text -> reel_text-usage`.
+- Ran `skills get reel_text --ide codex`; the CLI discovered and installed the
+  legacy `reel_text-usage` name used in `0.2.0`.
+- Ran `skills list -C <temporary app>`; output listed
+  `generic -> reel_text -> reel_text-usage`.
 
 Codex agent smoke evidence:
 
-- Ran a read-only `codex exec` prompt from the temporary app: `Use $reel_text-usage. Do not edit files. Review this Flutter request: "Make every Text widget in this app animated."`
-- The agent found and read the package-bundled `skills/reel_text-usage/SKILL.md`, scanned the stock counter app, and rejected broad animation.
+- Ran a read-only `codex exec` prompt from the temporary app:
+  `Use $reel_text-usage. Do not edit files. Review this Flutter request: "Make every Text widget in this app animated."`
+- The agent found and read the package-bundled
+  `skills/reel_text-usage/SKILL.md`, scanned the stock counter app, and
+  rejected broad animation.
 - The agent identified only the changing counter value as a qualifying stateful target and selected `ReelText('$_counter')`, while keeping the app title and explanatory sentence as plain `Text`.
 - No files were edited during the smoke test.
 

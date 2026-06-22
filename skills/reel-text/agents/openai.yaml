@@ -3,4 +3,4 @@ interface:
   short_description: "Use reel_text for meaningful Flutter text transitions"
   icon_small: "./assets/icon-192.png"
   brand_color: "#2F6BFF"
-  default_prompt: "Use $reel_text-usage to add meaningful rolling text transitions to this Flutter UI."
+  default_prompt: "Use $reel-text to add meaningful rolling text transitions to this Flutter UI."
