@@ -33,13 +33,11 @@ Then run:
 flutter pub get
 ```
 
-The package supports Dart 3.2.0 and Flutter 3.16.0 and newer. The included
-showcase app tracks current stable Flutter because it uses modern demo-only UI
-APIs.
+The package root supports Dart 3.2.0 and Flutter 3.16.0 and newer.
 
-Only the package root is the compatibility floor. Demo-only dependencies such
-as `http`, `url_launcher`, `flutter_svg`, and `google_fonts` live under
-`example/`.
+The included showcase app lives under `example/` and has its own SDK and
+dependency setup. Demo-only dependencies such as `http`, `url_launcher`,
+`flutter_svg`, and `google_fonts` are scoped there.
 
 Then import it:
 
