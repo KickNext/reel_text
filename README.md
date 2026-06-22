@@ -23,12 +23,9 @@ imperative `flash()` calls stay safe under rapid button taps.
 flutter pub add reel_text
 ```
 
-Or add the dependency manually if you keep `pubspec.yaml` organized by hand:
-
-```yaml
-dependencies:
-  reel_text: ^0.1.6
-```
+If you keep `pubspec.yaml` organized by hand, add `reel_text` under
+`dependencies` using the current version constraint from
+[pub.dev](https://pub.dev/packages/reel_text/install).
 
 Then run:
 
