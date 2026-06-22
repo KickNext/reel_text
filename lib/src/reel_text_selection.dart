@@ -48,7 +48,7 @@ class _ReelTextSelection extends StatelessWidget {
               selectionRegistrar: registrar,
               selectionColor:
                   DefaultSelectionStyle.of(context).selectionColor ??
-                  DefaultSelectionStyle.defaultColor,
+                      DefaultSelectionStyle.defaultColor,
             ),
           ),
         ),

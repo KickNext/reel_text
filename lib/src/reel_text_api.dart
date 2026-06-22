@@ -90,9 +90,8 @@ class ReelTextOptions {
       curve: curve ?? this.curve,
       bounce: bounce ?? this.bounce,
       color: clearColor ? color : color ?? this.color,
-      colorBuilder: clearColor
-          ? colorBuilder
-          : colorBuilder ?? this.colorBuilder,
+      colorBuilder:
+          clearColor ? colorBuilder : colorBuilder ?? this.colorBuilder,
       colorFade: colorFade ?? this.colorFade,
       skipUnchanged: skipUnchanged ?? this.skipUnchanged,
       interrupt: interrupt ?? this.interrupt,
@@ -146,8 +145,8 @@ class ReelTextOptions {
 typedef ReelWaitingFrameBuilder = String Function(String text, int tick);
 
 /// Builds per-value options for [ReelText.sequence].
-typedef ReelTextSequenceOptionsBuilder =
-    ReelTextOptions Function(int index, String value);
+typedef ReelTextSequenceOptionsBuilder = ReelTextOptions Function(
+    int index, String value);
 
 enum _ReelWaitingKind { ellipsis, wave, frames, builder, scramble }
 
@@ -163,15 +162,15 @@ class ReelWaiting {
   /// When [step] is omitted, the cadence is derived from the roll duration so
   /// every dot lands on a steady, metronome-like beat.
   const ReelWaiting.ellipsis({this.dots = 3, this.dot = '.', this.step})
-    : assert(dots > 0),
-      _kind = _ReelWaitingKind.ellipsis,
-      rest = Duration.zero,
-      frames = const <String>[],
-      frameBuilder = null,
-      alphabet = '',
-      changedGlyphs = 0,
-      protectedPrefix = 0,
-      holdEvery = 0;
+      : assert(dots > 0),
+        _kind = _ReelWaitingKind.ellipsis,
+        rest = Duration.zero,
+        frames = const <String>[],
+        frameBuilder = null,
+        alphabet = '',
+        changedGlyphs = 0,
+        protectedPrefix = 0,
+        holdEvery = 0;
 
   /// The whole label stays readable and periodically "breathes": a single
   /// stagger wave of self-rolls sweeps across the glyphs, then the label
@@ -180,42 +179,42 @@ class ReelWaiting {
   /// Without explicit options the wave uses a calm, non-springy curve and
   /// almost no tilt so the loop reads as a ripple instead of a glitch.
   const ReelWaiting.wave({this.rest = const Duration(milliseconds: 1300)})
-    : _kind = _ReelWaitingKind.wave,
-      dots = 0,
-      dot = '',
-      step = null,
-      frames = const <String>[],
-      frameBuilder = null,
-      alphabet = '',
-      changedGlyphs = 0,
-      protectedPrefix = 0,
-      holdEvery = 0;
+      : _kind = _ReelWaitingKind.wave,
+        dots = 0,
+        dot = '',
+        step = null,
+        frames = const <String>[],
+        frameBuilder = null,
+        alphabet = '',
+        changedGlyphs = 0,
+        protectedPrefix = 0,
+        holdEvery = 0;
 
   /// Cycles through explicit [frames] every [step].
   const ReelWaiting.frames(this.frames, {this.step})
-    : _kind = _ReelWaitingKind.frames,
-      dots = 0,
-      dot = '',
-      rest = Duration.zero,
-      frameBuilder = null,
-      alphabet = '',
-      changedGlyphs = 0,
-      protectedPrefix = 0,
-      holdEvery = 0;
+      : _kind = _ReelWaitingKind.frames,
+        dots = 0,
+        dot = '',
+        rest = Duration.zero,
+        frameBuilder = null,
+        alphabet = '',
+        changedGlyphs = 0,
+        protectedPrefix = 0,
+        holdEvery = 0;
 
   /// Generates each frame with [frameBuilder] every [step].
   const ReelWaiting.builder(
     ReelWaitingFrameBuilder this.frameBuilder, {
     this.step,
-  }) : _kind = _ReelWaitingKind.builder,
-       dots = 0,
-       dot = '',
-       rest = Duration.zero,
-       frames = const <String>[],
-       alphabet = '',
-       changedGlyphs = 0,
-       protectedPrefix = 0,
-       holdEvery = 0;
+  })  : _kind = _ReelWaitingKind.builder,
+        dots = 0,
+        dot = '',
+        rest = Duration.zero,
+        frames = const <String>[],
+        alphabet = '',
+        changedGlyphs = 0,
+        protectedPrefix = 0,
+        holdEvery = 0;
 
   /// Scrambles a small suffix of the readable label between held frames.
   ///
@@ -228,16 +227,16 @@ class ReelWaiting {
     this.protectedPrefix = 0,
     this.holdEvery = 4,
     this.step,
-  }) : assert(alphabet.length > 0),
-       assert(changedGlyphs > 0),
-       assert(protectedPrefix >= 0),
-       assert(holdEvery > 0),
-       _kind = _ReelWaitingKind.scramble,
-       dots = 0,
-       dot = '',
-       rest = Duration.zero,
-       frames = const <String>[],
-       frameBuilder = null;
+  })  : assert(alphabet.length > 0),
+        assert(changedGlyphs > 0),
+        assert(protectedPrefix >= 0),
+        assert(holdEvery > 0),
+        _kind = _ReelWaitingKind.scramble,
+        dots = 0,
+        dot = '',
+        rest = Duration.zero,
+        frames = const <String>[],
+        frameBuilder = null;
 
   final _ReelWaitingKind _kind;
 

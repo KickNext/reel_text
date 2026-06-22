@@ -3,10 +3,17 @@
 .flutter-plugins-dependencies
 .agents/
 .idea/
+assets/
 build/
 coverage/
 docs/
+example/android/
+example/ios/
+example/linux/
+example/macos/
 example/output/
+example/web/reel-text-icon-source.png
+example/windows/
 pubspec.lock
 *-audit.log
 web-home-redesign-*.png
