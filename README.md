@@ -37,6 +37,31 @@ Then import it:
 import 'package:reel_text/reel_text.dart';
 ```
 
+## AI agent skill
+
+This repository includes an optional agent skill for AI coding tools:
+[`skills/reel-text/SKILL.md`](https://github.com/KickNext/reel_text/blob/main/skills/reel-text/SKILL.md).
+It helps agents decide when `reel_text` is appropriate, when plain `Text` is
+better, and which API to use.
+
+Install with the Agent Skills CLI:
+
+```bash
+npx skills add KickNext/reel_text --skill reel-text
+```
+
+Or install the
+[`skills/reel-text`](https://github.com/KickNext/reel_text/tree/main/skills/reel-text)
+folder manually in any agent that supports local skills. The `SKILL.md` file is
+the portable source of truth; `agents/openai.yaml` only adds optional
+Codex/OpenAI UI metadata.
+
+Then ask:
+
+```text
+Use $reel-text to add meaningful rolling text transitions to this Flutter UI.
+```
+
 ## When to use it
 
 - Command feedback: `Copy -> Copied -> Copy`.
