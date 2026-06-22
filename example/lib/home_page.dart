@@ -1827,7 +1827,6 @@ class _InstallBlockState extends State<_InstallBlock> {
     required VoidCallback onCopy,
     required Key buttonKey,
     required Key labelSlotKey,
-    required bool compact,
   }) {
     final label = SizedBox(
       width: 62,
@@ -1903,28 +1902,36 @@ class _InstallBlockState extends State<_InstallBlock> {
       ),
     );
 
-    if (compact) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          label,
-          const SizedBox(height: 10),
-          command,
-          const SizedBox(height: 10),
-          Align(alignment: Alignment.centerLeft, child: copyButton),
-        ],
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 420) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              label,
+              const SizedBox(width: 16),
+              Expanded(child: command),
+              const SizedBox(width: 10),
+              copyButton,
+            ],
+          );
+        }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        label,
-        const SizedBox(width: 16),
-        Expanded(child: command),
-        const SizedBox(width: 10),
-        copyButton,
-      ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            label,
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: command),
+                const SizedBox(width: 10),
+                copyButton,
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1946,7 +1953,6 @@ class _InstallBlockState extends State<_InstallBlock> {
             onCopy: () => _copy(_packageCommand, _packageLabel),
             buttonKey: const ValueKey('install_copy_button'),
             labelSlotKey: const ValueKey('install_copy_label_slot'),
-            compact: compact,
           ),
           SizedBox(height: compact ? 14 : 10),
           _row(
@@ -1956,7 +1962,6 @@ class _InstallBlockState extends State<_InstallBlock> {
             onCopy: () => _copy(_skillCommand, _skillLabel),
             buttonKey: const ValueKey('install_skill_copy_button'),
             labelSlotKey: const ValueKey('install_skill_copy_label_slot'),
-            compact: compact,
           ),
         ],
       ),

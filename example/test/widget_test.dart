@@ -446,6 +446,12 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('install_copy_button'))).height,
       48,
     );
+    expect(
+      (tester.getCenter(find.byKey(const ValueKey('install_copy_button'))).dy -
+              tester.getCenter(find.text('flutter pub add reel_text')).dy)
+          .abs(),
+      lessThan(8),
+    );
     expect(find.text('skills get reel_text'), findsOneWidget);
     expect(
       tester
@@ -458,6 +464,16 @@ void main() {
           .getSize(find.byKey(const ValueKey('install_skill_copy_label_slot')))
           .height,
       34,
+    );
+    expect(
+      (tester
+                  .getCenter(
+                    find.byKey(const ValueKey('install_skill_copy_button')),
+                  )
+                  .dy -
+              tester.getCenter(find.text('skills get reel_text')).dy)
+          .abs(),
+      lessThan(8),
     );
     expect(
       tester
