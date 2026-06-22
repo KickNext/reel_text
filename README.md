@@ -23,16 +23,6 @@ imperative `flash()` calls stay safe under rapid button taps.
 flutter pub add reel_text
 ```
 
-If you keep `pubspec.yaml` organized by hand, add `reel_text` under
-`dependencies` using the current version constraint from
-[pub.dev](https://pub.dev/packages/reel_text/install).
-
-Then run:
-
-```bash
-flutter pub get
-```
-
 The package supports Dart 3.2.0 and Flutter 3.16.0 and newer.
 
 Then import it:
