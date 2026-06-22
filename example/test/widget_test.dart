@@ -446,6 +446,19 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('install_copy_button'))).height,
       48,
     );
+    expect(find.text('skills get reel_text'), findsOneWidget);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('install_skill_copy_button')))
+          .height,
+      48,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('install_skill_copy_label_slot')))
+          .height,
+      34,
+    );
     expect(
       tester
           .getSize(find.byKey(const ValueKey('install_copy_label_slot')))
