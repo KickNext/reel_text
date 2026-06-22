@@ -1,13 +1,12 @@
 part of 'reel_text.dart';
 
 /// Builds the resting text span for [ReelTextEditingController].
-typedef ReelTextEditingSpanBuilder =
-    TextSpan Function(
-      BuildContext context,
-      String text,
-      TextStyle style,
-      bool withComposing,
-    );
+typedef ReelTextEditingSpanBuilder = TextSpan Function(
+  BuildContext context,
+  String text,
+  TextStyle style,
+  bool withComposing,
+);
 
 /// A text replacement that [ReelTextEditingController] can animate inline.
 class ReelTextEditReplacement {

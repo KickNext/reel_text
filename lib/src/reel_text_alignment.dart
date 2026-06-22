@@ -33,14 +33,12 @@ Alignment _alignmentForTextAlign(TextAlign align, TextDirection direction) {
     TextAlign.left => Alignment.centerLeft,
     TextAlign.right => Alignment.centerRight,
     TextAlign.center => Alignment.center,
-    TextAlign.end =>
-      direction == TextDirection.rtl
-          ? Alignment.centerLeft
-          : Alignment.centerRight,
-    TextAlign.start || TextAlign.justify =>
-      direction == TextDirection.rtl
-          ? Alignment.centerRight
-          : Alignment.centerLeft,
+    TextAlign.end => direction == TextDirection.rtl
+        ? Alignment.centerLeft
+        : Alignment.centerRight,
+    TextAlign.start || TextAlign.justify => direction == TextDirection.rtl
+        ? Alignment.centerRight
+        : Alignment.centerLeft,
   };
 }
 

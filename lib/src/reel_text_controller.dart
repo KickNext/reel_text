@@ -69,14 +69,13 @@ class ReelTextController extends ChangeNotifier {
     final sequence = frames.isEmpty
         ? <String>[text]
         : frames.first == text
-        ? List<String>.of(frames)
-        : <String>[text, ...frames];
+            ? List<String>.of(frames)
+            : <String>[text, ...frames];
     final progressOptions = (options ?? const ReelTextOptions()).copyWith(
       interrupt: false,
       skipUnchanged: !animateUnchanged,
     );
-    final tickInterval =
-        interval ??
+    final tickInterval = interval ??
         Duration(
           milliseconds: (progressOptions.duration.inMilliseconds * 0.55)
               .round()
@@ -147,8 +146,7 @@ class ReelTextController extends ChangeNotifier {
       case _ReelWaitingKind.wave:
         final base = options ?? _waveWaitingDefaults;
         final glyphCount = math.max(1, text.characters.length);
-        final sweepMs =
-            (glyphCount - 1) * base.stagger.inMilliseconds +
+        final sweepMs = (glyphCount - 1) * base.stagger.inMilliseconds +
             base.exitOffset.inMilliseconds +
             (base.duration.inMilliseconds * (1 + base.bounce * 0.45)).round() +
             (base.color != null || base.colorBuilder != null
