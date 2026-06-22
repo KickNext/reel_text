@@ -1,7 +1,9 @@
 *.iml
 .dart_tool/
 .flutter-plugins-dependencies
+.agent/
 .agents/
+.dart_skills/
 .idea/
 /assets/reel_text_hero_light_720p_60fps_full_cycle.webp
 build/

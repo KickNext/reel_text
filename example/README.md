@@ -24,6 +24,16 @@ Run it with:
 flutter run
 ```
 
+Install the optional agent skill for this app:
+
+```bash
+dart pub global activate skills
+skills get reel_text
+```
+
+Run `skills get reel_text` from this `example/` directory. It creates local
+agent-tooling files that are ignored by git.
+
 Build it for web with:
 
 ```bash
