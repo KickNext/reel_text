@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:reel_text/reel_text.dart';
@@ -1784,27 +1783,28 @@ class _InstallBlock extends StatefulWidget {
 
 class _InstallBlockState extends State<_InstallBlock> {
   static const _packageCommand = 'flutter pub add reel_text';
-  static const _skillCommand = 'skills get reel_text';
-  static const _controlHeight = 44.0;
-  static final _skillsUri = Uri.parse('https://pub.dev/packages/skills');
+  static const _skillCommand =
+      'npx skills add KickNext/reel_text --skill reel-text --agent universal --yes';
+  static const _skillCommandDisplay =
+      'npx skills add KickNext/reel_text\n--skill reel-text --agent universal --yes';
+  static const _controlHeight = 48.0;
+  static const _skillControlHeight = 60.0;
+  static final _skillsUri = Uri.parse('https://github.com/flutter/skills');
 
   late final ReelTextController _packageLabel;
   late final ReelTextController _skillLabel;
-  late final TapGestureRecognizer _skillsLink;
 
   @override
   void initState() {
     super.initState();
     _packageLabel = ReelTextController(initialText: 'Copy');
     _skillLabel = ReelTextController(initialText: 'Copy');
-    _skillsLink = TapGestureRecognizer()..onTap = _openSkills;
   }
 
   @override
   void dispose() {
     _packageLabel.dispose();
     _skillLabel.dispose();
-    _skillsLink.dispose();
     super.dispose();
   }
 
@@ -1839,6 +1839,7 @@ class _InstallBlockState extends State<_InstallBlock> {
     required Key commandKey,
     required Key buttonKey,
     required Key labelSlotKey,
+    double controlHeight = _controlHeight,
     bool linkSkills = false,
   }) {
     final label = SizedBox(
@@ -1854,47 +1855,58 @@ class _InstallBlockState extends State<_InstallBlock> {
       ),
     );
 
-    final command = SizedBox(
-      key: commandKey,
-      height: _controlHeight,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Studio.inset,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Studio.border),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Align(
+    final commandChild = DecoratedBox(
+      decoration: BoxDecoration(
+        color: Studio.inset,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Studio.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: _CommandText(
-                text: commandText,
-                skillsRecognizer: linkSkills ? _skillsLink : null,
-              ),
-            ),
+            child: _CommandText(text: commandText, linkSkills: linkSkills),
           ),
         ),
       ),
     );
 
+    final command = SizedBox(
+      key: commandKey,
+      height: controlHeight,
+      child: linkSkills
+          ? Semantics(
+              button: true,
+              label: 'Open skills CLI documentation',
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _openSkills,
+                  child: commandChild,
+                ),
+              ),
+            )
+          : commandChild,
+    );
+
     final copyButton = SizedBox(
       key: buttonKey,
       width: 88,
-      height: _controlHeight,
+      height: controlHeight,
       child: FilledButton(
         onPressed: onCopy,
         style: FilledButton.styleFrom(
           backgroundColor: Studio.primary,
           foregroundColor: Studio.onAccent(Studio.primary),
           padding: EdgeInsets.zero,
-          minimumSize: const Size(88, 0),
+          minimumSize: const Size(88, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: ClipRect(
           child: SizedBox(
@@ -1975,12 +1987,13 @@ class _InstallBlockState extends State<_InstallBlock> {
           SizedBox(height: compact ? 14 : 10),
           _row(
             labelText: 'AI skill',
-            commandText: _skillCommand,
+            commandText: _skillCommandDisplay,
             controller: _skillLabel,
             onCopy: () => _copy(_skillCommand, _skillLabel),
             commandKey: const ValueKey('install_skill_command_block'),
             buttonKey: const ValueKey('install_skill_copy_button'),
             labelSlotKey: const ValueKey('install_skill_copy_label_slot'),
+            controlHeight: _skillControlHeight,
             linkSkills: true,
           ),
         ],
@@ -1990,10 +2003,10 @@ class _InstallBlockState extends State<_InstallBlock> {
 }
 
 class _CommandText extends StatelessWidget {
-  const _CommandText({required this.text, this.skillsRecognizer});
+  const _CommandText({required this.text, required this.linkSkills});
 
   final String text;
-  final TapGestureRecognizer? skillsRecognizer;
+  final bool linkSkills;
 
   @override
   Widget build(BuildContext context) {
@@ -2002,8 +2015,8 @@ class _CommandText extends StatelessWidget {
       color: Studio.text.withValues(alpha: 0.9),
       weight: FontWeight.w600,
     );
-    final recognizer = skillsRecognizer;
-    if (recognizer == null || !text.startsWith('skills ')) {
+    final skillsIndex = text.indexOf('skills');
+    if (!linkSkills || skillsIndex < 0) {
       return Text(text, style: baseStyle);
     }
 
@@ -2021,13 +2034,9 @@ class _CommandText extends StatelessWidget {
       text: TextSpan(
         style: baseStyle,
         children: [
-          TextSpan(
-            text: 'skills',
-            style: linkStyle,
-            recognizer: recognizer,
-            mouseCursor: SystemMouseCursors.click,
-          ),
-          const TextSpan(text: ' get reel_text'),
+          TextSpan(text: text.substring(0, skillsIndex)),
+          TextSpan(text: 'skills', style: linkStyle),
+          TextSpan(text: text.substring(skillsIndex + 'skills'.length)),
         ],
       ),
     );

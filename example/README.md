@@ -24,16 +24,17 @@ Run it with:
 flutter run
 ```
 
-Install the optional agent skill for this app with the Dart
-[`skills`](https://pub.dev/packages/skills) CLI:
+Install the optional agent skill for this app with the `npx skills` CLI style
+used by the official
+[Flutter](https://github.com/flutter/skills) and
+[Dart](https://github.com/dart-lang/skills) skill repositories:
 
 ```bash
-dart pub global activate skills
-skills get reel_text
+npx skills add KickNext/reel_text --skill reel-text --agent universal --yes
 ```
 
-Run `skills get reel_text` from this `example/` directory. It creates local
-agent-tooling files that are ignored by git.
+Run it from this `example/` directory. It creates local agent-tooling files
+that are ignored by git.
 
 Build it for web with:
 

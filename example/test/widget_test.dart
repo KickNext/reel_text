@@ -462,15 +462,22 @@ void main() {
       find.byKey(const ValueKey('install_skill_command_text')),
     );
     final skillCommandSpan = skillCommand.text as TextSpan;
-    final skillCommandFirst = skillCommandSpan.children!.first as TextSpan;
-    final skillCommandLast = skillCommandSpan.children!.last as TextSpan;
-    expect(skillCommandSpan.toPlainText(), 'skills get reel_text');
-    expect(skillCommandFirst.recognizer, isNotNull);
-    expect(skillCommandFirst.text, 'skills');
-    expect(skillCommandFirst.style?.color, Studio.info);
-    expect(skillCommandFirst.style?.decoration, TextDecoration.underline);
-    expect(skillCommandFirst.style?.decorationThickness, 2.4);
-    expect(skillCommandLast.text, ' get reel_text');
+    final skillCommandChildren = skillCommandSpan.children!.cast<TextSpan>();
+    final skillCommandLink = skillCommandChildren[1];
+    expect(
+      skillCommandSpan.toPlainText(),
+      'npx skills add KickNext/reel_text\n--skill reel-text --agent universal --yes',
+    );
+    expect(skillCommandChildren.first.text, 'npx ');
+    expect(skillCommandLink.recognizer, isNull);
+    expect(skillCommandLink.text, 'skills');
+    expect(skillCommandLink.style?.color, Studio.info);
+    expect(skillCommandLink.style?.decoration, TextDecoration.underline);
+    expect(skillCommandLink.style?.decorationThickness, 2.4);
+    expect(
+      skillCommandChildren.last.text,
+      ' add KickNext/reel_text\n--skill reel-text --agent universal --yes',
+    );
     expect(
       tester
           .getSize(find.byKey(const ValueKey('install_skill_copy_button')))
