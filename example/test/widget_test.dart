@@ -442,9 +442,15 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('install_block_frame'))).width,
       lessThanOrEqualTo(520),
     );
+    final installCommandBlock = find.byKey(
+      const ValueKey('install_command_block'),
+    );
+    final installSkillCommandBlock = find.byKey(
+      const ValueKey('install_skill_command_block'),
+    );
     expect(
       tester.getSize(find.byKey(const ValueKey('install_copy_button'))).height,
-      48,
+      tester.getSize(installCommandBlock).height,
     );
     expect(
       (tester.getCenter(find.byKey(const ValueKey('install_copy_button'))).dy -
@@ -469,7 +475,7 @@ void main() {
       tester
           .getSize(find.byKey(const ValueKey('install_skill_copy_button')))
           .height,
-      48,
+      tester.getSize(installSkillCommandBlock).height,
     );
     expect(
       tester

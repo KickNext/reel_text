@@ -1785,6 +1785,7 @@ class _InstallBlock extends StatefulWidget {
 class _InstallBlockState extends State<_InstallBlock> {
   static const _packageCommand = 'flutter pub add reel_text';
   static const _skillCommand = 'skills get reel_text';
+  static const _controlHeight = 44.0;
   static final _skillsUri = Uri.parse('https://pub.dev/packages/skills');
 
   late final ReelTextController _packageLabel;
@@ -1835,6 +1836,7 @@ class _InstallBlockState extends State<_InstallBlock> {
     required String commandText,
     required ReelTextController controller,
     required VoidCallback onCopy,
+    required Key commandKey,
     required Key buttonKey,
     required Key labelSlotKey,
     bool linkSkills = false,
@@ -1852,20 +1854,27 @@ class _InstallBlockState extends State<_InstallBlock> {
       ),
     );
 
-    final command = DecoratedBox(
-      decoration: BoxDecoration(
-        color: Studio.inset,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Studio.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: _CommandText(
-            text: commandText,
-            skillsRecognizer: linkSkills ? _skillsLink : null,
+    final command = SizedBox(
+      key: commandKey,
+      height: _controlHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Studio.inset,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Studio.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: _CommandText(
+                text: commandText,
+                skillsRecognizer: linkSkills ? _skillsLink : null,
+              ),
+            ),
           ),
         ),
       ),
@@ -1874,17 +1883,18 @@ class _InstallBlockState extends State<_InstallBlock> {
     final copyButton = SizedBox(
       key: buttonKey,
       width: 88,
-      height: 48,
+      height: _controlHeight,
       child: FilledButton(
         onPressed: onCopy,
         style: FilledButton.styleFrom(
           backgroundColor: Studio.primary,
           foregroundColor: Studio.onAccent(Studio.primary),
           padding: EdgeInsets.zero,
-          minimumSize: const Size(88, 48),
+          minimumSize: const Size(88, 0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: ClipRect(
           child: SizedBox(
@@ -1958,6 +1968,7 @@ class _InstallBlockState extends State<_InstallBlock> {
             commandText: _packageCommand,
             controller: _packageLabel,
             onCopy: () => _copy(_packageCommand, _packageLabel),
+            commandKey: const ValueKey('install_command_block'),
             buttonKey: const ValueKey('install_copy_button'),
             labelSlotKey: const ValueKey('install_copy_label_slot'),
           ),
@@ -1967,6 +1978,7 @@ class _InstallBlockState extends State<_InstallBlock> {
             commandText: _skillCommand,
             controller: _skillLabel,
             onCopy: () => _copy(_skillCommand, _skillLabel),
+            commandKey: const ValueKey('install_skill_command_block'),
             buttonKey: const ValueKey('install_skill_copy_button'),
             labelSlotKey: const ValueKey('install_skill_copy_label_slot'),
             linkSkills: true,
