@@ -1,5 +1,5 @@
 ---
-name: reel-text
+name: reel_text-usage
 description: "Use when adding, reviewing, or refactoring Flutter UI that may use reel_text for compact rolling text: command feedback, async/status labels, counters, rotating short phrases, styled TextSpan phrases, or editable inline corrections. Also use when deciding whether plain Text is better or installing reel_text."
 ---
 
@@ -41,7 +41,7 @@ For an app that does not already depend on the package:
 flutter pub add reel_text
 ```
 
-If `pubspec.yaml` is carefully grouped, commented, sorted, or otherwise hand-structured, preserve that structure instead of blindly running a command that may rewrite it. Add `reel_text` under `dependencies` using the current version constraint from pub.dev, then run `flutter pub get`. Do not copy a hardcoded version from this skill.
+If `pubspec.yaml` is carefully grouped, commented, sorted, or otherwise hand-structured, do not let a command rewrite it blindly. Run `flutter pub add reel_text --dry-run` to see the default compatible constraint without editing files, then add `reel_text: <constraint>` under `dependencies` by hand and run `flutter pub get`. If dry-run cannot resolve the package, look up the current compatible constraint from pub.dev. Do not copy a hardcoded version from this skill.
 
 Then import:
 
@@ -165,6 +165,15 @@ await label.runWhile(
 - "Animate a hero paragraph" -> keep `Text`; consider only a short rotating word or action label.
 - "Animate spellcheck corrections in a field" -> use `ReelTextEditingController`, not an overlay outside `EditableText`.
 - "Support RTL/mixed bidi labels" -> use `Directionality`/`textDirection` and verify visual order in context.
+
+## Pressure Test Status
+
+This skill has not yet recorded full subagent baseline/pass evidence. Before deployment, run the pressure scenarios above without the skill and with the skill, then capture the exact outcome in the PR or release note. Minimum pass criteria:
+
+- Broad "animate all text" prompts are rejected instead of replacing many `Text` widgets.
+- Copy-button prompts choose `ReelTextController.flash()` with a state-owned controller and fixed label slot.
+- Async status prompts choose `runWhile()` only when a single `Future` owns the lifecycle; otherwise they choose `startWaiting()`/`startProgress()`.
+- Hero/body-copy prompts keep `Text` unless there is a short stateful phrase that qualifies.
 
 ## Verification
 

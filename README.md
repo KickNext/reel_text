@@ -34,34 +34,38 @@ import 'package:reel_text/reel_text.dart';
 ## AI agent skill
 
 This repository includes an optional agent skill for AI coding tools:
-[`skills/reel-text/SKILL.md`](https://github.com/KickNext/reel_text/blob/main/skills/reel-text/SKILL.md).
+[`skills/reel_text-usage/SKILL.md`](https://github.com/KickNext/reel_text/blob/main/skills/reel_text-usage/SKILL.md).
 It helps agents decide when `reel_text` is appropriate, when plain `Text` is
 better, and which API to use.
 
-Install with the Agent Skills CLI:
+If you use the Dart
+[`skills`](https://pub.dev/packages/skills) CLI, install package skills from
+your Flutter project's dependency tree:
 
 ```bash
-npx skills add KickNext/reel_text --skill reel-text
+dart pub global activate skills
+skills get reel_text
 ```
 
-Update an installed skill after this repository changes:
+Run `skills get reel_text` from the root of the Flutter app that depends on
+`reel_text`. If your shell cannot find `skills` after activation, add
+`$HOME/.pub-cache/bin` to `PATH`. Re-run `skills get reel_text` after updating
+the package.
 
-```bash
-npx skills update reel-text --project
-```
+This installs the `reel_text-usage` skill into supported IDEs such as Codex,
+Claude Code, Cursor, Antigravity, and Cline. The underscore is intentional:
+the Dart CLI requires package skills to start with the pub package name
+(`reel_text-`). The skill tells agents to animate only short stateful text,
+reject broad `Text` replacements, preserve layout and accessibility, and choose
+the narrowest `reel_text` API for the interaction.
 
-Use `--global` instead of `--project` if you installed the skill globally.
-
-Or install the
-[`skills/reel-text`](https://github.com/KickNext/reel_text/tree/main/skills/reel-text)
-folder manually in any agent that supports local skills. The `SKILL.md` file is
-the portable source of truth; `agents/openai.yaml` only adds optional
-Codex/OpenAI UI metadata.
+The `SKILL.md` file is the source of truth; `agents/openai.yaml` only adds
+optional Codex/OpenAI UI metadata.
 
 Then ask:
 
 ```text
-Use $reel-text to add meaningful rolling text transitions to this Flutter UI.
+Use $reel_text-usage to add meaningful rolling text transitions to this Flutter UI.
 ```
 
 ## When to use it
