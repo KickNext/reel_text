@@ -264,12 +264,15 @@ ReelText.rich(
 );
 ```
 
-`ReelText.rich` supports `TextSpan` trees. `WidgetSpan` is not supported because
-the widget splits text into measured rolling grapheme clusters.
+`ReelText.rich` supports `TextSpan` trees with `WidgetSpan` leaves. Text spans
+still split into measured rolling grapheme clusters, while each `WidgetSpan`
+stays as an inline widget in the same reel row. Replacing the widget child is
+not split into glyph motion; the surrounding text still rolls normally.
 
 Screen readers get one semantic label for the current value. For rich text,
 `TextSpan.semanticsLabel` is respected; pass `semanticsLabel` to `ReelText` when
-the whole rolling label needs a custom spoken value.
+the whole rolling label needs a custom spoken value or when a `WidgetSpan`
+contributes meaning.
 
 RTL and mixed-bidi labels follow Flutter's visual glyph order while keeping
 logical semantics. Use `Directionality` or the widget's `textDirection` when the

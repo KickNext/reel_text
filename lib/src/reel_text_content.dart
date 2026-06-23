@@ -4,58 +4,116 @@ class _ReelTextContent {
   const _ReelTextContent({
     required this.span,
     required this.plainText,
-    required this.glyphs,
+    required this.tokens,
   });
 
   final InlineSpan span;
   final String plainText;
-  final List<_StyledGlyph> glyphs;
+  final List<_ReelTextToken> tokens;
+
+  bool get hasWidgets => tokens.any((token) => token.isWidget);
 
   factory _ReelTextContent.plain(String text, TextStyle style) {
+    final tokens = <_ReelTextToken>[];
+    for (final glyph in text.characters) {
+      tokens.add(_ReelTextToken.text(
+        text: glyph,
+        style: style,
+      ));
+    }
     return _ReelTextContent(
       span: TextSpan(text: text, style: style),
       plainText: text,
-      glyphs: [for (final glyph in text.characters) _StyledGlyph(glyph, style)],
+      tokens: tokens,
     );
   }
 
   factory _ReelTextContent.rich(InlineSpan span, TextStyle style) {
-    final glyphs = <_StyledGlyph>[];
-    _collectGlyphs(span, style, glyphs);
+    final tokens = <_ReelTextToken>[];
+    _collectTokens(span, style, tokens);
     return _ReelTextContent(
       span: TextSpan(style: style, children: [span]),
-      plainText: span.toPlainText(
-        includeSemanticsLabels: false,
-        includePlaceholders: false,
-      ),
-      glyphs: glyphs,
+      plainText: _rollingTextFor(span),
+      tokens: tokens,
     );
   }
 
-  _StyledGlyph? glyphAt(int index) {
-    if (index < 0 || index >= glyphs.length) {
+  int get length => tokens.length;
+
+  _ReelTextToken? tokenAt(int index) {
+    if (index < 0 || index >= tokens.length) {
       return null;
     }
-    return glyphs[index];
+    return tokens[index];
+  }
+
+  Iterable<int> get widgetTokenIndexes sync* {
+    for (var i = 0; i < tokens.length; i++) {
+      if (tokens[i].isWidget) {
+        yield i;
+      }
+    }
+  }
+
+  Iterable<_ReelTextWidgetToken> get widgetTokens sync* {
+    for (final index in widgetTokenIndexes) {
+      final token = tokens[index];
+      yield _ReelTextWidgetToken(index, token.widgetSpan!, token.style);
+    }
   }
 }
 
-class _StyledGlyph {
-  const _StyledGlyph(this.text, this.style);
+class _ReelTextToken {
+  const _ReelTextToken.text({
+    required this.text,
+    required this.style,
+  }) : widgetSpan = null;
+
+  const _ReelTextToken.widget({
+    required WidgetSpan this.widgetSpan,
+    required this.style,
+  }) : text = _placeholderGlyph;
 
   final String text;
   final TextStyle style;
+  final WidgetSpan? widgetSpan;
+
+  bool get isWidget => widgetSpan != null;
 }
 
-void _collectGlyphs(
+class _ReelTextWidgetToken {
+  const _ReelTextWidgetToken(this.index, this.span, this.style);
+
+  final int index;
+  final WidgetSpan span;
+  final TextStyle style;
+}
+
+const _placeholderGlyph = '\uFFFC';
+
+String _rollingTextFor(InlineSpan span) {
+  return span.toPlainText(
+    includeSemanticsLabels: false,
+    includePlaceholders: true,
+  );
+}
+
+void _collectTokens(
   InlineSpan span,
   TextStyle inherited,
-  List<_StyledGlyph> glyphs,
+  List<_ReelTextToken> tokens,
 ) {
+  if (span is WidgetSpan) {
+    tokens.add(_ReelTextToken.widget(
+      widgetSpan: span,
+      style: inherited.merge(span.style),
+    ));
+    return;
+  }
+
   if (span is! TextSpan) {
     throw FlutterError(
-      'ReelText.rich currently supports TextSpan trees only. '
-      'WidgetSpan cannot be split into rolling glyphs.',
+      'ReelText.rich supports TextSpan trees and WidgetSpan leaves only.',
     );
   }
 
@@ -63,7 +121,10 @@ void _collectGlyphs(
   final text = span.text;
   if (text != null && text.isNotEmpty) {
     for (final glyph in text.characters) {
-      glyphs.add(_StyledGlyph(glyph, style));
+      tokens.add(_ReelTextToken.text(
+        text: glyph,
+        style: style,
+      ));
     }
   }
 
@@ -72,35 +133,6 @@ void _collectGlyphs(
     return;
   }
   for (final child in children) {
-    _collectGlyphs(child, style, glyphs);
+    _collectTokens(child, style, tokens);
   }
-}
-
-TextSpan _transparentTextSpan(InlineSpan span) {
-  if (span is! TextSpan) {
-    throw FlutterError(
-      'ReelText.rich currently supports TextSpan trees only. '
-      'WidgetSpan cannot be used for the hidden selection surface.',
-    );
-  }
-
-  final transparentStyle = (span.style ?? const TextStyle()).copyWith(
-    color: Colors.transparent,
-    decorationColor: Colors.transparent,
-  );
-  return TextSpan(
-    text: span.text,
-    style: transparentStyle,
-    recognizer: span.recognizer,
-    mouseCursor: span.mouseCursor,
-    onEnter: span.onEnter,
-    onExit: span.onExit,
-    semanticsLabel: span.semanticsLabel,
-    locale: span.locale,
-    spellOut: span.spellOut,
-    children: [
-      for (final child in span.children ?? const <InlineSpan>[])
-        _transparentTextSpan(child),
-    ],
-  );
 }

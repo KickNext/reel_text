@@ -1,17 +1,168 @@
 part of 'reel_text.dart';
 
+class _ReelTextLayoutContext {
+  const _ReelTextLayoutContext({
+    required this.textDirection,
+    required this.locale,
+    required this.strutStyle,
+    required this.widgetSpanMetricsFor,
+    required this.onWidgetSpanMetricsChanged,
+  });
+
+  final TextDirection textDirection;
+  final Locale? locale;
+  final StrutStyle? strutStyle;
+  final _WidgetSpanMetrics? Function(int index, WidgetSpan span)
+      widgetSpanMetricsFor;
+  final void Function(int index, WidgetSpan span, _WidgetSpanMetrics metrics)
+      onWidgetSpanMetricsChanged;
+
+  Alignment get inlineStartAlignment => _inlineStartAlignment(textDirection);
+}
+
+class _WidgetSpanSizeRegistry {
+  final _entries = <int, _WidgetSpanSizeEntry>{};
+
+  _WidgetSpanMetrics? metricsFor(int index, WidgetSpan span) {
+    final entry = _entries[index];
+    if (entry == null) {
+      return null;
+    }
+    if (identical(entry.span, span)) {
+      return entry.metrics;
+    }
+    if (_widgetSpansEquivalentForMetrics(entry.span, span)) {
+      return entry.metrics;
+    }
+    return null;
+  }
+
+  bool hasMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {
+    return metricsFor(index, span) == metrics;
+  }
+
+  void setMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {
+    _entries[index] = _WidgetSpanSizeEntry(span, metrics);
+  }
+}
+
+class _WidgetSpanSizeEntry {
+  const _WidgetSpanSizeEntry(this.span, this.metrics);
+
+  final WidgetSpan span;
+  final _WidgetSpanMetrics metrics;
+}
+
+@immutable
+class _WidgetSpanMetrics {
+  const _WidgetSpanMetrics({
+    required this.size,
+    required this.baselineOffset,
+  });
+
+  final Size size;
+  final double? baselineOffset;
+
+  _WidgetSpanMetrics unscaledBy(double scale) {
+    if (scale == 1) {
+      return this;
+    }
+    return _WidgetSpanMetrics(
+      size: Size(size.width / scale, size.height / scale),
+      baselineOffset: baselineOffset == null ? null : baselineOffset! / scale,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _WidgetSpanMetrics &&
+        other.size == size &&
+        other.baselineOffset == baselineOffset;
+  }
+
+  @override
+  int get hashCode => Object.hash(size, baselineOffset);
+}
+
+class _MeasuredReelTextRun {
+  const _MeasuredReelTextRun({
+    required this.content,
+    required this.metrics,
+  });
+
+  final _ReelTextContent content;
+  final _TextRunMetrics metrics;
+
+  String get text => content.plainText;
+
+  int get length => content.length;
+
+  bool get hasWidgets => content.hasWidgets;
+
+  double get width => metrics.width;
+
+  double get height => metrics.height;
+
+  List<int> get visualOrder => metrics.visualOrder;
+
+  double widthAt(int index) => metrics.widthAt(index);
+
+  _ReelTextToken? tokenAt(int index) => content.tokenAt(index);
+
+  double widthFor(_SlotEndpoint? endpoint) {
+    if (endpoint == null) {
+      return 0;
+    }
+    return widthAt(endpoint.index);
+  }
+
+  _ReelTextToken? tokenFor(_SlotEndpoint? endpoint) {
+    if (endpoint == null) {
+      return null;
+    }
+    return tokenAt(endpoint.index) ?? endpoint.token;
+  }
+
+  _SlotEndpoint? endpointAt(int index) {
+    final token = tokenAt(index);
+    if (token == null) {
+      return null;
+    }
+    return _SlotEndpoint(index: index, token: token);
+  }
+
+  static _MeasuredReelTextRun of({
+    required BuildContext context,
+    required _ReelTextContent content,
+    required _ReelTextLayoutContext layout,
+  }) {
+    return _MeasuredReelTextRun(
+      content: content,
+      metrics: _TextRunMetrics.of(
+        context: context,
+        content: content,
+        layout: layout,
+      ),
+    );
+  }
+}
+
 class _TextRunMetrics {
   const _TextRunMetrics({
     required this.widths,
     required this.visualOrder,
     required this.width,
     required this.height,
+    required this.alphabeticBaseline,
+    required this.ideographicBaseline,
   });
 
   final List<double> widths;
   final List<int> visualOrder;
   final double width;
   final double height;
+  final double alphabeticBaseline;
+  final double ideographicBaseline;
 
   double widthAt(int index) {
     if (index < 0 || index >= widths.length) {
@@ -20,37 +171,45 @@ class _TextRunMetrics {
     return widths[index];
   }
 
+  double baselineFor(TextBaseline? baseline) {
+    return switch (baseline) {
+      TextBaseline.ideographic => ideographicBaseline,
+      TextBaseline.alphabetic || null => alphabeticBaseline,
+    };
+  }
+
   static _TextRunMetrics of({
     required BuildContext context,
-    required InlineSpan span,
-    required TextDirection textDirection,
-    required Locale? locale,
-    required StrutStyle? strutStyle,
-    required String text,
+    required _ReelTextContent content,
+    required _ReelTextLayoutContext layout,
   }) {
     final textScaler =
         MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
     final painter = TextPainter(
-      text: span,
-      textDirection: textDirection,
+      text: content.span,
+      textDirection: layout.textDirection,
       textScaler: textScaler,
-      locale: locale,
-      strutStyle: strutStyle,
+      locale: layout.locale,
+      strutStyle: layout.strutStyle,
       maxLines: 1,
-    )..layout();
+    );
+    painter.setPlaceholderDimensions(
+      _placeholderDimensionsFor(content, layout.widgetSpanMetricsFor),
+    );
+    painter.layout();
 
-    final chars = text.characters.toList();
+    final tokens = content.tokens;
     final offsets = <int>[0];
     var offset = 0;
-    for (final char in chars) {
-      offset += char.length;
+    for (final token in tokens) {
+      offset += token.text.length;
       offsets.add(offset);
     }
 
     final widths = <double>[];
     final visualLefts = <double>[];
-    for (var i = 0; i < chars.length; i++) {
-      final bounds = _glyphBounds(painter, offsets[i], offsets[i + 1]);
+    for (var i = 0; i < tokens.length; i++) {
+      final bounds = _tokenBounds(painter, offsets[i], offsets[i + 1]);
       widths.add(bounds.width);
       visualLefts.add(bounds.left);
     }
@@ -67,7 +226,7 @@ class _TextRunMetrics {
     }
 
     final totalWidth = widths.fold<double>(0, (sum, width) => sum + width);
-    final visualOrder = [for (var i = 0; i < chars.length; i++) i]
+    final visualOrder = [for (var i = 0; i < tokens.length; i++) i]
       ..sort((a, b) {
         final byLeft = visualLefts[a].compareTo(visualLefts[b]);
         if (byLeft != 0) {
@@ -86,6 +245,12 @@ class _TextRunMetrics {
       visualOrder: visualOrder,
       width: totalWidth,
       height: painter.size.height,
+      alphabeticBaseline: painter.computeDistanceToActualBaseline(
+        TextBaseline.alphabetic,
+      ),
+      ideographicBaseline: painter.computeDistanceToActualBaseline(
+        TextBaseline.ideographic,
+      ),
     );
   }
 
@@ -95,7 +260,7 @@ class _TextRunMetrics {
         .dx;
   }
 
-  static _GlyphBounds _glyphBounds(TextPainter painter, int start, int end) {
+  static _TokenBounds _tokenBounds(TextPainter painter, int start, int end) {
     final boxes = painter.getBoxesForSelection(
       TextSelection(baseOffset: start, extentOffset: end),
     );
@@ -106,27 +271,69 @@ class _TextRunMetrics {
         width += (box.right - box.left).abs();
         left = math.min(left, math.min(box.left, box.right));
       }
-      return _GlyphBounds(width: width, left: left.isFinite ? left : 0);
+      return _TokenBounds(width: width, left: left.isFinite ? left : 0);
     }
 
     final startDx = _caretDx(painter, start);
     final endDx = _caretDx(painter, end);
-    return _GlyphBounds(
+    return _TokenBounds(
       width: (endDx - startDx).abs(),
       left: math.min(startDx, endDx),
     );
   }
 }
 
-class _GlyphBounds {
-  const _GlyphBounds({required this.width, required this.left});
+List<PlaceholderDimensions>? _placeholderDimensionsFor(
+  _ReelTextContent content,
+  _WidgetSpanMetrics? Function(int index, WidgetSpan span) widgetSpanMetricsFor,
+) {
+  final dimensions = <PlaceholderDimensions>[];
+  for (final widget in content.widgetTokens) {
+    dimensions.add(
+      _placeholderDimensionsForWidget(
+        widget.span,
+        widgetSpanMetricsFor(widget.index, widget.span) ??
+            const _WidgetSpanMetrics(size: Size.zero, baselineOffset: null),
+      ),
+    );
+  }
+  return dimensions.isEmpty ? null : dimensions;
+}
+
+PlaceholderDimensions _placeholderDimensionsForWidget(
+  WidgetSpan span,
+  _WidgetSpanMetrics metrics,
+) {
+  final size = metrics.size;
+  if (size == Size.zero) {
+    return PlaceholderDimensions(
+      size: Size.zero,
+      alignment: span.alignment,
+      baseline: span.baseline,
+      baselineOffset: span.alignment == ui.PlaceholderAlignment.baseline
+          ? metrics.baselineOffset ?? 0
+          : null,
+    );
+  }
+  return PlaceholderDimensions(
+    size: size,
+    alignment: span.alignment,
+    baseline: span.baseline,
+    baselineOffset: span.alignment == ui.PlaceholderAlignment.baseline
+        ? metrics.baselineOffset ?? size.height
+        : null,
+  );
+}
+
+class _TokenBounds {
+  const _TokenBounds({required this.width, required this.left});
 
   final double width;
   final double left;
 }
 
-class _GlyphMetrics {
-  const _GlyphMetrics({
+class _SlotMetrics {
+  const _SlotMetrics({
     required this.fromWidth,
     required this.toWidth,
     required this.height,

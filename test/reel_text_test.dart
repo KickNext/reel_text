@@ -610,6 +610,129 @@ void main() {
     );
   });
 
+  testWidgets('settled WidgetSpan layout clamps to bounded width', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_bounded_widget_settled');
+    const boxWidth = 88.0;
+    const widgetKey = ValueKey('reel_bounded_widget_child');
+    const style = TextStyle(fontSize: 22, fontWeight: FontWeight.w900);
+    const span = TextSpan(
+      children: [
+        TextSpan(text: 'READY '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SizedBox(key: widgetKey, width: 96, height: 18),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: SizedBox(
+            width: boxWidth,
+            child: ReelText.rich(span, key: reelKey, style: style),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byKey(reelKey)).width, boxWidth);
+    expect(tester.getSize(find.byKey(widgetKey)).width, 96);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('reel_text_settled_glyphs')))
+          .width,
+      greaterThan(boxWidth),
+    );
+  });
+
+  testWidgets('WidgetSpan reports natural height before cached measurement', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_tall_widget_settled');
+    const widgetKey = ValueKey('reel_tall_widget_child');
+    const span = TextSpan(
+      children: [
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SizedBox(key: widgetKey, width: 32, height: 64),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: ReelText.rich(
+            span,
+            key: reelKey,
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byKey(widgetKey)).height, 64);
+    expect(
+        tester.getSize(find.byKey(reelKey)).height, greaterThanOrEqualTo(64));
+  });
+
+  testWidgets('rolling WidgetSpan layout clamps to bounded width', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_bounded_widget_rolling');
+    const boxWidth = 88.0;
+    const widgetKey = ValueKey('reel_bounded_rolling_widget_child');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 180),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    TextSpan spanFor(String text, {bool widgetSpan = false}) {
+      return TextSpan(
+        children: [
+          TextSpan(text: text),
+          if (widgetSpan)
+            const WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: SizedBox(key: widgetKey, width: 96, height: 18),
+            ),
+        ],
+      );
+    }
+
+    Widget frame(InlineSpan span) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: SizedBox(
+            width: boxWidth,
+            child: ReelText.rich(span, key: reelKey, options: options),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(spanFor('READY ')));
+    await tester.pumpWidget(frame(spanFor('READY ', widgetSpan: true)));
+    await tester.pump(const Duration(milliseconds: 20));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(tester.getSize(find.byKey(reelKey)).width, boxWidth);
+    expect(tester.getSize(find.byKey(widgetKey)).width, 96);
+  });
+
   testWidgets('rolling layout width interpolates before matching target Text', (
     tester,
   ) async {
@@ -1010,6 +1133,1213 @@ void main() {
     expect(paragraph.registrar, isNotNull);
   });
 
+  testWidgets('rich text renders WidgetSpan inside reel slots', (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('reel_rich_widget_span_child');
+    const span = TextSpan(
+      children: [
+        TextSpan(text: 'Sync '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SizedBox(key: widgetKey, width: 18, height: 18),
+        ),
+        TextSpan(text: ' done'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SelectionArea(
+          child: Center(
+            child: ReelText.rich(span),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(widgetKey), findsOneWidget);
+    expect(find.byKey(const ValueKey('reel_text_settled')), findsOneWidget);
+    expect(find.byKey(const ValueKey('reel_text_widget_span')), findsNothing);
+
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+    final plainText = paragraph.text.toPlainText(includePlaceholders: false);
+    expect(plainText, 'Sync  done');
+    expect(paragraph.registrar, isNotNull);
+  });
+
+  testWidgets('rich text with WidgetSpan still rolls text updates', (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('reel_rich_widget_span_child');
+    TextSpan spanFor(String text) {
+      return TextSpan(
+        children: [
+          TextSpan(text: '$text '),
+          const WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(key: widgetKey, width: 18, height: 18),
+          ),
+        ],
+      );
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SelectionArea(child: ReelText.rich(spanFor('Sync'))),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SelectionArea(child: ReelText.rich(spanFor('Done'))),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(find.byKey(const ValueKey('reel_text_widget_span')), findsNothing);
+    expect(find.byKey(widgetKey), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('reel_text_settled')), findsOneWidget);
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+    expect(paragraph.text.toPlainText(includePlaceholders: false), 'Done ');
+  });
+
+  testWidgets('rich text keeps pending WidgetSpan when interrupt is disabled', (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('reel_rich_pending_widget_span_child');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 180),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      interrupt: false,
+    );
+
+    TextSpan spanFor(String text) {
+      return TextSpan(
+        children: [
+          TextSpan(text: '$text '),
+          const WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(key: widgetKey, width: 18, height: 18),
+          ),
+        ],
+      );
+    }
+
+    Widget frame(String text) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SelectionArea(
+            child: ReelText.rich(spanFor(text), options: options),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame('Sync'));
+    await tester.pumpWidget(frame('Done'));
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 20));
+    await tester.pumpWidget(frame('Ship'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(widgetKey), findsOneWidget);
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+    expect(paragraph.text.toPlainText(includePlaceholders: false), 'Ship ');
+  });
+
+  testWidgets('rich text queues same-plain pending WidgetSpan update', (
+    tester,
+  ) async {
+    const oldWidgetKey = ValueKey('reel_rich_pending_old_widget_child');
+    const newWidgetKey = ValueKey('reel_rich_pending_new_widget_child');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 180),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      interrupt: false,
+    );
+
+    TextSpan spanFor(String text, Key widgetKey) {
+      return TextSpan(
+        children: [
+          TextSpan(text: '$text '),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(key: widgetKey, width: 18, height: 18),
+          ),
+        ],
+      );
+    }
+
+    Widget frame(String text, Key widgetKey) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SelectionArea(
+            child: ReelText.rich(
+              spanFor(text, widgetKey),
+              options: options,
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame('Sync', oldWidgetKey));
+    await tester.pumpWidget(frame('Done', oldWidgetKey));
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 20));
+    await tester.pumpWidget(frame('Done', newWidgetKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(oldWidgetKey), findsNothing);
+    expect(find.byKey(newWidgetKey), findsOneWidget);
+  });
+
+  testWidgets('rich text keeps WidgetSpan anchored when prefix length changes',
+      (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('reel_rich_widget_anchor_child');
+    TextSpan spanFor({
+      required String prefix,
+      required String badge,
+      required String suffix,
+    }) {
+      return TextSpan(
+        children: [
+          TextSpan(text: '$prefix '),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(
+              key: widgetKey,
+              width: badge.length * 8,
+              height: 18,
+            ),
+          ),
+          TextSpan(text: ' $suffix'),
+        ],
+      );
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SelectionArea(
+            child: ReelText.rich(
+              spanFor(prefix: 'Queued', badge: 'AI', suffix: 'check'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SelectionArea(
+            child: ReelText.rich(
+              spanFor(prefix: 'Reviewed', badge: 'QA', suffix: 'done'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(find.byKey(widgetKey), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+    expect(
+      paragraph.text.toPlainText(includePlaceholders: false),
+      'Reviewed  done',
+    );
+  });
+
+  testWidgets('rich text keeps colorBuilder totals valid for moved WidgetSpan',
+      (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('reel_rich_color_total_widget');
+    final colorCalls = <String>[];
+    final options = ReelTextOptions(
+      colorBuilder: (index, total) {
+        if (index < 0 || index >= total) {
+          throw StateError('colorBuilder received $index/$total');
+        }
+        colorCalls.add('$index/$total');
+        return const Color(0xff38bdf8);
+      },
+    );
+
+    TextSpan spanFor({required bool widgetAtEnd}) {
+      final widget = WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: const SizedBox(key: widgetKey, width: 18, height: 18),
+      );
+      return TextSpan(
+        children: widgetAtEnd
+            ? [
+                const TextSpan(text: 'A'),
+                const TextSpan(text: 'B'),
+                widget,
+              ]
+            : [
+                const TextSpan(text: 'A'),
+                widget,
+                const TextSpan(text: 'B'),
+              ],
+      );
+    }
+
+    Widget frame(InlineSpan span) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(span, options: options),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(spanFor(widgetAtEnd: false)));
+    await tester.pumpWidget(frame(spanFor(widgetAtEnd: true)));
+
+    expect(tester.takeException(), isNull);
+    expect(colorCalls, contains('3/4'));
+  });
+
+  testWidgets('rich text treats reordered keyed WidgetSpans as changed slots', (
+    tester,
+  ) async {
+    const redKey = ValueKey('reel_rich_reorder_red_child');
+    const blueKey = ValueKey('reel_rich_reorder_blue_child');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 140),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    WidgetSpan badge(Key key, double width) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: SizedBox(key: key, width: width, height: 18),
+      );
+    }
+
+    TextSpan spanFor(List<WidgetSpan> badges) {
+      return TextSpan(
+        children: [
+          const TextSpan(text: 'Status '),
+          badges[0],
+          const TextSpan(text: ' '),
+          badges[1],
+        ],
+      );
+    }
+
+    Widget frame(List<WidgetSpan> badges) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(spanFor(badges), options: options),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame([
+      badge(redKey, 18),
+      badge(blueKey, 28),
+    ]));
+
+    await tester.pumpWidget(frame([
+      badge(blueKey, 28),
+      badge(redKey, 18),
+    ]));
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byKey(blueKey)).left,
+      lessThan(tester.getRect(find.byKey(redKey)).left),
+    );
+  });
+
+  testWidgets('rich text reorders GlobalKey WidgetSpans without duplicates', (
+    tester,
+  ) async {
+    final redKey = GlobalKey();
+    final blueKey = GlobalKey();
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 140),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    WidgetSpan badge(GlobalKey key, double width) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: SizedBox(key: key, width: width, height: 18),
+      );
+    }
+
+    TextSpan spanFor(List<WidgetSpan> badges) {
+      return TextSpan(
+        children: [
+          const TextSpan(text: 'Status '),
+          badges[0],
+          const TextSpan(text: ' '),
+          badges[1],
+        ],
+      );
+    }
+
+    Widget frame(List<WidgetSpan> badges) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(spanFor(badges), options: options),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame([
+      badge(redKey, 18),
+      badge(blueKey, 28),
+    ]));
+
+    await tester.pumpWidget(frame([
+      badge(blueKey, 28),
+      badge(redKey, 18),
+    ]));
+    await tester.pump(const Duration(milliseconds: 20));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('rich text keeps WidgetSpan RTL glyph order while rolling', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rich_widget_span_rtl_order');
+    const widgetKey = ValueKey('reel_rich_widget_span_rtl_child');
+    const direction = TextDirection.rtl;
+    const style = TextStyle(fontSize: 34, fontWeight: FontWeight.w700);
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 140),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    TextSpan spanFor(String text) {
+      return TextSpan(
+        children: [
+          TextSpan(text: text),
+          const WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(key: widgetKey, width: 18, height: 18),
+          ),
+        ],
+      );
+    }
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: direction,
+        child: Center(
+          child: ReelText.rich(
+            spanFor(text),
+            key: reelKey,
+            style: style,
+            options: options,
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame('אבגד'));
+    final sourceOrder = _visibleReelGlyphsLeftToRight(
+      tester,
+      find.byKey(reelKey),
+    );
+
+    await tester.pumpWidget(frame('אבג'));
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(find.byKey(widgetKey), findsOneWidget);
+    expect(
+      _visibleReelGlyphsLeftToRight(tester, find.byKey(reelKey)),
+      sourceOrder,
+    );
+  });
+
+  testWidgets('rich text keeps WidgetSpan RTL placeholder position', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rich_widget_span_rtl_placeholder');
+    const widgetKey = ValueKey('reel_rich_widget_span_rtl_placeholder_child');
+    const direction = TextDirection.rtl;
+    const style = TextStyle(fontSize: 34, fontWeight: FontWeight.w700);
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 140),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    TextSpan spanFor(String text) {
+      return TextSpan(
+        children: [
+          TextSpan(text: text),
+          const WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(key: widgetKey, width: 18, height: 18),
+          ),
+        ],
+      );
+    }
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: direction,
+        child: Center(
+          child: ReelText.rich(
+            spanFor(text),
+            key: reelKey,
+            style: style,
+            options: options,
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame('אבגד'));
+    final sourceLeft = tester.getRect(find.byKey(widgetKey)).left;
+
+    await tester.pumpWidget(frame('אבג'));
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(
+      tester.getRect(find.byKey(widgetKey)).left,
+      closeTo(sourceLeft, 0.01),
+    );
+  });
+
+  testWidgets('rich text rolls text when WidgetSpan is removed', (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('reel_rich_removed_widget_span_child');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 140),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+    const fromSpan = TextSpan(
+      children: [
+        TextSpan(text: 'Sync '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SizedBox(key: widgetKey, width: 18, height: 18),
+        ),
+        TextSpan(text: ' done'),
+      ],
+    );
+    const toSpan = TextSpan(text: 'Done');
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SelectionArea(
+            child: ReelText.rich(fromSpan, options: options),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SelectionArea(
+            child: ReelText.rich(toSpan, options: options),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('reel_text_settled')), findsOneWidget);
+    expect(find.byKey(widgetKey), findsNothing);
+  });
+
+  testWidgets('rich text updates active roll when WidgetSpan size arrives', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rich_late_widget_size');
+    const widgetKey = ValueKey('reel_rich_late_widget_size_child');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 180),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+    const style = TextStyle(fontSize: 28, fontWeight: FontWeight.w700);
+
+    const fromSpan = TextSpan(text: 'ETA ');
+    const toSpan = TextSpan(
+      children: [
+        TextSpan(text: 'ETA '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SizedBox(key: widgetKey, width: 84, height: 18),
+        ),
+      ],
+    );
+
+    Widget frame(InlineSpan span) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(
+              span,
+              key: reelKey,
+              options: options,
+              style: style,
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(fromSpan));
+    await tester.pumpWidget(frame(toSpan));
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+
+    final rollingWidth = tester.getSize(find.byKey(reelKey)).width;
+
+    await tester.pumpAndSettle();
+    final settledWidth = tester.getSize(find.byKey(reelKey)).width;
+
+    expect(rollingWidth, closeTo(settledWidth, 1.0));
+  });
+
+  testWidgets('rich text remeasures changed WidgetSpan at same token index', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rich_remeasure_widget');
+    const narrowKey = ValueKey('reel_rich_remeasure_narrow_child');
+    const wideKey = ValueKey('reel_rich_remeasure_wide_child');
+    const style = TextStyle(fontSize: 28, fontWeight: FontWeight.w700);
+
+    TextSpan spanFor(Key key, double width) {
+      return TextSpan(
+        children: [
+          const TextSpan(text: 'ETA '),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(key: key, width: width, height: 18),
+          ),
+        ],
+      );
+    }
+
+    Widget frame(InlineSpan span) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(span, key: reelKey, style: style),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(spanFor(narrowKey, 20)));
+    await tester.pump();
+    expect(tester.getSize(find.byKey(narrowKey)).width, 20);
+
+    await tester.pumpWidget(frame(spanFor(wideKey, 84)));
+    await tester.pump();
+
+    expect(find.byKey(narrowKey), findsNothing);
+    expect(tester.getSize(find.byKey(wideKey)).width, 84);
+  });
+
+  testWidgets('rich text remeasures growing child inside same WidgetSpan', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rich_growing_widget');
+    const widgetKey = ValueKey('reel_rich_growing_widget_child');
+    final width = ValueNotifier<double>(20);
+    final span = TextSpan(
+      children: [
+        const TextSpan(text: 'ETA '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: ValueListenableBuilder<double>(
+            valueListenable: width,
+            builder: (context, value, _) {
+              return SizedBox(key: widgetKey, width: value, height: 18);
+            },
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(
+              span,
+              key: reelKey,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(tester.getSize(find.byKey(widgetKey)).width, 20);
+
+    width.value = 84;
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byKey(widgetKey)).width, 84);
+  });
+
+  testWidgets('rich text refreshes size for recreated equivalent WidgetSpan', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rich_recreated_widget');
+    const widgetKey = ValueKey('reel_rich_recreated_widget_child');
+
+    TextSpan spanFor() {
+      return TextSpan(
+        children: [
+          const TextSpan(text: 'ETA '),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: const SizedBox(key: widgetKey, width: 48, height: 18),
+          ),
+          const TextSpan(text: ' ok'),
+        ],
+      );
+    }
+
+    Widget frame() {
+      return MaterialApp(
+        home: SelectionArea(
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(
+              child: ReelText.rich(
+                spanFor(),
+                key: reelKey,
+                style:
+                    const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    double selectionRight() {
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.byKey(const ValueKey('reel_text_selection_surface')),
+      );
+      final boxes = paragraph.getBoxesForSelection(
+        TextSelection(
+          baseOffset: 0,
+          extentOffset: spanFor().toPlainText(includePlaceholders: true).length,
+        ),
+      );
+      return boxes.map((box) => box.right).reduce(math.max);
+    }
+
+    await tester.pumpWidget(frame());
+    await tester.pump();
+    await tester.pump();
+    final initialSelectionRight = selectionRight();
+
+    await tester.pumpWidget(frame());
+    expect(selectionRight(), closeTo(initialSelectionRight, 1.0));
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byKey(widgetKey)).width, 48);
+    expect(selectionRight(), closeTo(initialSelectionRight, 1.0));
+    expect(selectionRight(),
+        closeTo(tester.getSize(find.byKey(reelKey)).width, 1.0));
+  });
+
+  testWidgets('rich text records WidgetSpan shrink to zero', (tester) async {
+    const reelKey = ValueKey('reel_rich_zero_widget');
+    const widgetKey = ValueKey('reel_rich_zero_widget_child');
+    final width = ValueNotifier<double>(48);
+    final span = TextSpan(
+      children: [
+        const TextSpan(text: 'ETA '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: ValueListenableBuilder<double>(
+            valueListenable: width,
+            builder: (context, value, _) {
+              if (value == 0) {
+                return const SizedBox.shrink(key: widgetKey);
+              }
+              return SizedBox(key: widgetKey, width: value, height: 18);
+            },
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(
+              span,
+              key: reelKey,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    final expandedWidth = tester.getSize(find.byKey(reelKey)).width;
+
+    width.value = 0;
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byKey(widgetKey)).width, 0);
+    expect(tester.getSize(find.byKey(reelKey)).width,
+        lessThan(expandedWidth - 40));
+  });
+
+  testWidgets('rich text honors WidgetSpan child baseline', (tester) async {
+    const richTextKey = ValueKey('reel_rich_baseline_reference');
+    const reelKey = ValueKey('reel_rich_baseline_reel');
+    const richChildKey = ValueKey('reel_rich_baseline_reference_child');
+    const reelChildKey = ValueKey('reel_rich_baseline_reel_child');
+    const lineStyle = TextStyle(fontSize: 38, fontWeight: FontWeight.w700);
+    const childStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w400);
+
+    TextSpan spanFor(Key childKey) {
+      return TextSpan(
+        style: lineStyle,
+        children: [
+          const TextSpan(text: 'A'),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: Text('xy', key: childKey, style: childStyle),
+          ),
+          const TextSpan(text: 'B'),
+        ],
+      );
+    }
+
+    TextBox placeholderBox(Finder paragraphFinder) {
+      final paragraph = tester.renderObject<RenderParagraph>(paragraphFinder);
+      final boxes = paragraph.getBoxesForSelection(
+        const TextSelection(baseOffset: 1, extentOffset: 2),
+      );
+      expect(boxes, hasLength(1));
+      return boxes.single;
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(key: richTextKey, text: spanFor(richChildKey)),
+                const SizedBox(height: 24),
+                SelectionArea(
+                  child: ReelText.rich(spanFor(reelChildKey), key: reelKey),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final richChildTop = tester.getRect(find.byKey(richChildKey)).top -
+        tester.getRect(find.byKey(richTextKey)).top;
+    final reelChildTop = tester.getRect(find.byKey(reelChildKey)).top -
+        tester.getRect(find.byKey(reelKey)).top;
+    final richBox = placeholderBox(find.byKey(richTextKey));
+    final reelBox = placeholderBox(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(reelChildTop, closeTo(richChildTop, 1.0));
+    expect(reelBox.top, closeTo(richBox.top, 1.0));
+    expect(reelBox.bottom, closeTo(richBox.bottom, 1.0));
+  });
+
+  testWidgets('rich text recomputes WidgetSpan metrics when metadata changes', (
+    tester,
+  ) async {
+    const richTextKey = ValueKey('reel_rich_metadata_reference');
+    const reelKey = ValueKey('reel_rich_metadata_reel');
+    const richChildKey = ValueKey('reel_rich_metadata_reference_child');
+    const reelChildKey = ValueKey('reel_rich_metadata_reel_child');
+    const lineStyle = TextStyle(fontSize: 38, fontWeight: FontWeight.w700);
+    const childStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w400);
+
+    TextSpan spanFor(Key childKey, PlaceholderAlignment alignment) {
+      return TextSpan(
+        style: lineStyle,
+        children: [
+          const TextSpan(text: 'A'),
+          WidgetSpan(
+            alignment: alignment,
+            baseline: alignment == PlaceholderAlignment.baseline
+                ? TextBaseline.alphabetic
+                : null,
+            child: Text('xy', key: childKey, style: childStyle),
+          ),
+          const TextSpan(text: 'B'),
+        ],
+      );
+    }
+
+    TextBox placeholderBox(Finder paragraphFinder) {
+      final paragraph = tester.renderObject<RenderParagraph>(paragraphFinder);
+      final boxes = paragraph.getBoxesForSelection(
+        const TextSelection(baseOffset: 1, extentOffset: 2),
+      );
+      expect(boxes, hasLength(1));
+      return boxes.single;
+    }
+
+    Widget frame(PlaceholderAlignment alignment) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  key: richTextKey,
+                  text: spanFor(richChildKey, alignment),
+                ),
+                const SizedBox(height: 24),
+                SelectionArea(
+                  child: ReelText.rich(
+                    spanFor(reelChildKey, alignment),
+                    key: reelKey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(PlaceholderAlignment.middle));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.pumpWidget(frame(PlaceholderAlignment.baseline));
+    await tester.pump();
+    await tester.pump();
+
+    final richBox = placeholderBox(find.byKey(richTextKey));
+    final reelBox = placeholderBox(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(reelBox.top, closeTo(richBox.top, 1.0));
+    expect(reelBox.bottom, closeTo(richBox.bottom, 1.0));
+  });
+
+  testWidgets('rich text honors non-baseline WidgetSpan alignment', (
+    tester,
+  ) async {
+    const lineStyle = TextStyle(fontSize: 38, fontWeight: FontWeight.w700);
+
+    TextSpan spanFor(Key childKey, PlaceholderAlignment alignment) {
+      final baseline = switch (alignment) {
+        PlaceholderAlignment.aboveBaseline ||
+        PlaceholderAlignment.belowBaseline ||
+        PlaceholderAlignment.baseline =>
+          TextBaseline.alphabetic,
+        PlaceholderAlignment.top ||
+        PlaceholderAlignment.middle ||
+        PlaceholderAlignment.bottom =>
+          null,
+      };
+      return TextSpan(
+        style: lineStyle,
+        children: [
+          const TextSpan(text: 'A'),
+          WidgetSpan(
+            alignment: alignment,
+            baseline: baseline,
+            child: SizedBox(key: childKey, width: 18, height: 12),
+          ),
+          const TextSpan(text: 'B'),
+        ],
+      );
+    }
+
+    TextBox placeholderBox(Finder paragraphFinder) {
+      final paragraph = tester.renderObject<RenderParagraph>(paragraphFinder);
+      final boxes = paragraph.getBoxesForSelection(
+        const TextSelection(baseOffset: 1, extentOffset: 2),
+      );
+      expect(boxes, hasLength(1));
+      return boxes.single;
+    }
+
+    for (final alignment in [
+      PlaceholderAlignment.top,
+      PlaceholderAlignment.bottom,
+      PlaceholderAlignment.aboveBaseline,
+      PlaceholderAlignment.belowBaseline,
+    ]) {
+      final richTextKey = ValueKey('reel_rich_${alignment.name}_reference');
+      final reelKey = ValueKey('reel_rich_${alignment.name}_reel');
+      final richChildKey =
+          ValueKey('reel_rich_${alignment.name}_reference_child');
+      final reelChildKey = ValueKey('reel_rich_${alignment.name}_reel_child');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    key: richTextKey,
+                    text: spanFor(richChildKey, alignment),
+                  ),
+                  const SizedBox(height: 24),
+                  SelectionArea(
+                    child: ReelText.rich(
+                      spanFor(reelChildKey, alignment),
+                      key: reelKey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final richChildTop = tester.getRect(find.byKey(richChildKey)).top -
+          tester.getRect(find.byKey(richTextKey)).top;
+      final reelChildTop = tester.getRect(find.byKey(reelChildKey)).top -
+          tester.getRect(find.byKey(reelKey)).top;
+      final richBox = placeholderBox(find.byKey(richTextKey));
+      final reelBox = placeholderBox(
+        find.byKey(const ValueKey('reel_text_selection_surface')),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(reelChildTop, closeTo(richChildTop, 1.0));
+      expect(reelBox.top, closeTo(richBox.top, 1.0));
+      expect(reelBox.bottom, closeTo(richBox.bottom, 1.0));
+    }
+  });
+
+  testWidgets('rich text scales WidgetSpan children with text scaler', (
+    tester,
+  ) async {
+    const richTextKey = ValueKey('reel_rich_scaled_widget_reference');
+    const reelKey = ValueKey('reel_rich_scaled_widget_reel');
+    const richChildKey = ValueKey('reel_rich_scaled_widget_reference_child');
+    const reelChildKey = ValueKey('reel_rich_scaled_widget_reel_child');
+    const lineStyle = TextStyle(fontSize: 24, fontWeight: FontWeight.w700);
+    const textScaler = TextScaler.linear(2);
+
+    TextSpan spanFor(Key childKey) {
+      return TextSpan(
+        style: lineStyle,
+        children: [
+          const TextSpan(text: 'A'),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(key: childKey, width: 18, height: 12),
+          ),
+          const TextSpan(text: 'B'),
+        ],
+      );
+    }
+
+    TextBox placeholderBox(Finder paragraphFinder) {
+      final paragraph = tester.renderObject<RenderParagraph>(paragraphFinder);
+      final boxes = paragraph.getBoxesForSelection(
+        const TextSelection(baseOffset: 1, extentOffset: 2),
+      );
+      expect(boxes, hasLength(1));
+      return boxes.single;
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: textScaler),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    key: richTextKey,
+                    text: spanFor(richChildKey),
+                    textScaler: textScaler,
+                  ),
+                  const SizedBox(height: 24),
+                  SelectionArea(
+                    child: ReelText.rich(spanFor(reelChildKey), key: reelKey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final richBox = placeholderBox(find.byKey(richTextKey));
+    final reelBox = placeholderBox(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect((richBox.right - richBox.left).abs(), closeTo(36, 1.0));
+    expect((richBox.bottom - richBox.top).abs(), closeTo(24, 1.0));
+    expect(
+      (reelBox.right - reelBox.left).abs(),
+      closeTo((richBox.right - richBox.left).abs(), 1.0),
+    );
+    expect(
+      (reelBox.bottom - reelBox.top).abs(),
+      closeTo((richBox.bottom - richBox.top).abs(), 1.0),
+    );
+  });
+
+  testWidgets('rich text selection includes WidgetSpan width', (tester) async {
+    const span = TextSpan(
+      children: [
+        TextSpan(text: 'Reviewed '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SizedBox(width: 40, height: 18),
+        ),
+        TextSpan(text: ' done'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SelectionArea(
+          child: Center(
+            child: ReelText.rich(
+              span,
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+    final boxes = paragraph.getBoxesForSelection(
+      TextSelection(
+        baseOffset: 0,
+        extentOffset: span.toPlainText(includePlaceholders: true).length,
+      ),
+    );
+    final selectionRight = boxes.map((box) => box.right).reduce(math.max);
+    final visualWidth = tester.getSize(find.byType(ReelText)).width;
+
+    expect(selectionRight, closeTo(visualWidth, 1.0));
+  });
+
   testWidgets('rich text uses TextSpan semantics labels', (tester) async {
     const visibleText = 'ETA';
     const semanticsText = 'estimated arrival';
@@ -1026,13 +2356,55 @@ void main() {
     expect(find.bySemanticsLabel(visibleText), findsNothing);
   });
 
+  testWidgets('rich text preserves WidgetSpan child semantics', (
+    tester,
+  ) async {
+    final span = TextSpan(
+      children: [
+        const TextSpan(text: 'ETA '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Semantics(
+            label: 'priority badge',
+            child: const SizedBox(width: 12, height: 12),
+          ),
+        ),
+        const TextSpan(text: ' ready'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.rich(span),
+      ),
+    );
+
+    expect(find.bySemanticsLabel(RegExp(r'\bETA\s+ready\b')), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(RegExp(r'\bpriority badge\b')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('explicit semanticsLabel overrides rich text semantics', (
     tester,
   ) async {
-    const span = TextSpan(text: 'ETA', semanticsLabel: 'estimated arrival');
+    final span = TextSpan(
+      children: [
+        const TextSpan(text: 'ETA', semanticsLabel: 'estimated arrival'),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Semantics(
+            label: 'priority badge',
+            child: const SizedBox(width: 12, height: 12),
+          ),
+        ),
+      ],
+    );
 
     await tester.pumpWidget(
-      const Directionality(
+      Directionality(
         textDirection: TextDirection.ltr,
         child: ReelText.rich(span, semanticsLabel: 'delivery estimate'),
       ),
@@ -1040,6 +2412,7 @@ void main() {
 
     expect(find.bySemanticsLabel('delivery estimate'), findsOneWidget);
     expect(find.bySemanticsLabel('estimated arrival'), findsNothing);
+    expect(find.bySemanticsLabel('priority badge'), findsNothing);
   });
 
   testWidgets('editing controller renders replacements inside EditableText', (

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -458,26 +459,14 @@ void main() {
           .abs(),
       lessThan(8),
     );
-    final skillCommand = tester.widget<RichText>(
+    final skillCommand = tester.widget<Text>(
       find.byKey(const ValueKey('install_skill_command_text')),
     );
-    final skillCommandSpan = skillCommand.text as TextSpan;
-    final skillCommandChildren = skillCommandSpan.children!.cast<TextSpan>();
-    final skillCommandLink = skillCommandChildren[1];
     expect(
-      skillCommandSpan.toPlainText(),
+      skillCommand.data,
       'npx skills add KickNext/reel_text\n--skill reel-text --agent universal --yes',
     );
-    expect(skillCommandChildren.first.text, 'npx ');
-    expect(skillCommandLink.recognizer, isNull);
-    expect(skillCommandLink.text, 'skills');
-    expect(skillCommandLink.style?.color, Studio.info);
-    expect(skillCommandLink.style?.decoration, TextDecoration.underline);
-    expect(skillCommandLink.style?.decorationThickness, 2.4);
-    expect(
-      skillCommandChildren.last.text,
-      ' add KickNext/reel_text\n--skill reel-text --agent universal --yes',
-    );
+    expect(skillCommand.style?.decoration, isNot(TextDecoration.underline));
     expect(
       tester
           .getSize(find.byKey(const ValueKey('install_skill_copy_button')))
@@ -776,6 +765,90 @@ void main() {
     );
     expect(find.text('Waiting label'), findsOneWidget);
     expect(slotHeight('recipe_waiting_motion_slot'), 56);
+
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('recipe_widget_span_slot')),
+      recipesList,
+      const Offset(0, -120),
+    );
+    expect(find.text('WidgetSpan inline'), findsOneWidget);
+    expect(slotHeight('recipe_widget_span_slot'), 62);
+    expect(
+      find.byKey(const ValueKey('recipe_widget_span_badge')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_widget_span_slot')),
+        matching: find.byKey(const ValueKey('reel_text_settled')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_widget_span_slot')),
+        matching: find.byKey(const ValueKey('reel_text_widget_span')),
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(find.text('Mark reviewed'));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_widget_span_slot')),
+        matching: find.byKey(const ValueKey('reel_text_rolling')),
+      ),
+      findsOneWidget,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_widget_span_slot')),
+        matching: find.byKey(const ValueKey('reel_text_settled')),
+      ),
+      findsOneWidget,
+    );
+    final widgetSpanSelection = tester.renderObject<RenderParagraph>(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_widget_span_slot')),
+        matching: find.byKey(const ValueKey('reel_text_selection_surface')),
+      ),
+    );
+    expect(
+      widgetSpanSelection.text.toPlainText(includePlaceholders: false),
+      'Reviewed  done',
+    );
+
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('recipe_widget_span_rtl_slot')),
+      recipesList,
+      const Offset(0, -120),
+    );
+    expect(find.text('WidgetSpan RTL'), findsOneWidget);
+    expect(slotHeight('recipe_widget_span_rtl_slot'), 62);
+    expect(
+      tester
+          .widget<Directionality>(
+            find.byKey(const ValueKey('recipe_widget_span_rtl_directionality')),
+          )
+          .textDirection,
+      TextDirection.rtl,
+    );
+    expect(
+      find.byKey(const ValueKey('recipe_widget_span_rtl_badge')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Roll RTL badge'));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recipe_widget_span_rtl_slot')),
+        matching: find.byKey(const ValueKey('reel_text_rolling')),
+      ),
+      findsOneWidget,
+    );
 
     await tester.dragUntilVisible(
       find.text('Spam-safe tap'),
