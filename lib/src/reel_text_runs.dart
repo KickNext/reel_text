@@ -114,12 +114,14 @@ class _RenderSettledTokenRowViewport extends RenderShiftedBox {
       BoxConstraints(
         minWidth: 0,
         maxWidth: double.infinity,
-        minHeight: height,
-        maxHeight: height,
+        minHeight: 0,
+        maxHeight: double.infinity,
       ),
       parentUsesSize: true,
     );
-    size = constraints.constrain(Size(child.size.width, height));
+    size = constraints.constrain(
+      Size(child.size.width, math.max(height, child.size.height)),
+    );
 
     final childParentData = child.parentData! as BoxParentData;
     childParentData.offset = alignment.alongOffset(
@@ -160,7 +162,6 @@ class _RollingReelText extends StatelessWidget {
       builder: (context, _) {
         final progressMs = animation.value * plan.totalDuration.inMilliseconds;
         final width = _rollingWidth(progressMs);
-        final viewportWidth = anchorShrinkingRight ? toRun.width : width;
         final rollingRow = Row(
           key: const ValueKey('reel_text_rolling'),
           mainAxisSize: MainAxisSize.min,
@@ -177,17 +178,15 @@ class _RollingReelText extends StatelessWidget {
           ],
         );
         if (hasWidgetSlots) {
-          return ClipRect(
-            child: Align(
-              alignment: anchorShrinkingRight
-                  ? layout.inlineStartAlignment
-                  : _alignmentForTextAlign(textAlign, layout.textDirection),
-              widthFactor: 1,
-              heightFactor: 1,
-              child: rollingRow,
-            ),
+          return _SettledTokenRowViewport(
+            height: height,
+            alignment: anchorShrinkingRight
+                ? layout.inlineStartAlignment
+                : _alignmentForTextAlign(textAlign, layout.textDirection),
+            child: rollingRow,
           );
         }
+        final viewportWidth = anchorShrinkingRight ? toRun.width : width;
         return SizedBox(
           width: viewportWidth,
           height: height,
@@ -198,7 +197,7 @@ class _RollingReelText extends StatelessWidget {
             minWidth: 0,
             maxWidth: double.infinity,
             minHeight: height,
-            maxHeight: height,
+            maxHeight: double.infinity,
             child: rollingRow,
           ),
         );

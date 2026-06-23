@@ -85,9 +85,11 @@ class _WidgetSpanFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final measuredSize = layout.widgetSpanSizeFor(index, span);
+    final hasMeasuredSize = measuredSize != null && !measuredSize.isEmpty;
     return SizedBox(
-      width: width > 0 ? width : null,
-      height: height,
+      width: hasMeasuredSize && width > 0 ? width : null,
+      height: hasMeasuredSize && height > 0 ? height : null,
       child: Align(
         alignment: _placeholderAlignment(span.alignment),
         child: _WidgetSpanSizeObserver(

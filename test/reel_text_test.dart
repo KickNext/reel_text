@@ -651,6 +651,88 @@ void main() {
     );
   });
 
+  testWidgets('WidgetSpan reports natural height before cached measurement', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_tall_widget_settled');
+    const widgetKey = ValueKey('reel_tall_widget_child');
+    const span = TextSpan(
+      children: [
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SizedBox(key: widgetKey, width: 32, height: 64),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: ReelText.rich(
+            span,
+            key: reelKey,
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byKey(widgetKey)).height, 64);
+    expect(
+        tester.getSize(find.byKey(reelKey)).height, greaterThanOrEqualTo(64));
+  });
+
+  testWidgets('rolling WidgetSpan layout clamps to bounded width', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_bounded_widget_rolling');
+    const boxWidth = 88.0;
+    const widgetKey = ValueKey('reel_bounded_rolling_widget_child');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 180),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    TextSpan spanFor(String text, {bool widgetSpan = false}) {
+      return TextSpan(
+        children: [
+          TextSpan(text: text),
+          if (widgetSpan)
+            const WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: SizedBox(key: widgetKey, width: 96, height: 18),
+            ),
+        ],
+      );
+    }
+
+    Widget frame(InlineSpan span) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: SizedBox(
+            width: boxWidth,
+            child: ReelText.rich(span, key: reelKey, options: options),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(spanFor('READY ')));
+    await tester.pumpWidget(frame(spanFor('READY ', widgetSpan: true)));
+    await tester.pump(const Duration(milliseconds: 20));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(tester.getSize(find.byKey(reelKey)).width, boxWidth);
+    expect(tester.getSize(find.byKey(widgetKey)).width, 96);
+  });
+
   testWidgets('rolling layout width interpolates before matching target Text', (
     tester,
   ) async {
