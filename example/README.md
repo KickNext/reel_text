@@ -14,7 +14,8 @@ It demonstrates:
 - Recipe cards with live previews and copy-ready code.
 - Imperative button feedback with `ReelTextController.flash()`.
 - Async labels with `runWhile()` and `startWaiting()`.
-- Numeric counters, status pills, rotating labels, and rich text.
+- Numeric counters, status pills, rotating labels, and rich text with anchored
+  inline widgets.
 - A motion workbench with target editing, direction/color/timing controls, and
   a `ReelText.controller` preview.
 

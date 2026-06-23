@@ -1,6 +1,6 @@
 ---
 name: reel-text
-description: "Use when adding, reviewing, or refactoring Flutter UI that may use reel_text for compact rolling text: command feedback, async/status labels, counters, rotating short phrases, styled TextSpan phrases, or editable inline corrections. Also use when deciding whether plain Text is better or installing reel_text."
+description: "Use when adding, reviewing, or refactoring Flutter UI that may use reel_text for compact rolling text: command feedback, async/status labels, counters, rotating short phrases, styled TextSpan phrases, WidgetSpan inline anchors, or editable inline corrections. Also use when deciding whether plain Text is better or installing reel_text."
 ---
 
 # Reel Text
@@ -9,7 +9,7 @@ description: "Use when adding, reviewing, or refactoring Flutter UI that may use
 
 Use motion to clarify a state transition. Do not use motion to make static text more interesting.
 
-`reel_text` is for short, high-signal Flutter text whose change carries meaning: commands, status, counters, rotating labels, styled inline phrases, and editable corrections. Keep ordinary reading content in Flutter `Text`.
+`reel_text` is for short, high-signal Flutter text whose change carries meaning: commands, status, counters, rotating labels, styled inline phrases, anchored inline widgets, and editable corrections. Keep ordinary reading content in Flutter `Text`.
 
 ## Decision Workflow
 
@@ -68,7 +68,7 @@ Keep Flutter `Text` for:
 - Paragraphs, body copy, legal text, help text, and long error messages.
 - Static labels, titles, navigation items, and captions that do not change.
 - Text that wraps or needs multi-line reading continuity.
-- `WidgetSpan` rich content. `ReelText.rich` supports `TextSpan` trees only.
+- `WidgetSpan` children that need their own glyph-level rolling animation. `ReelText.rich` can keep widgets anchored inline, but only surrounding `TextSpan` text rolls.
 - Connected scripts or complex typography unless the exact text is tested in context.
 - Any request that effectively says "animate all text" without stateful meaning.
 
@@ -79,7 +79,7 @@ When rejecting, explain the smaller useful target instead of applying the packag
 | Interaction | Use |
 | --- | --- |
 | Simple rebuild from one short string to another | `ReelText('Copy')` |
-| Styled inline phrase | `ReelText.rich(TextSpan(...))` |
+| Styled inline phrase or anchored inline widget | `ReelText.rich(TextSpan(...))` |
 | Imperative label owned by widget state | `ReelTextController` with `ReelText.controller` |
 | Temporary button feedback such as `Copy -> Copied -> Copy` | `ReelTextController.flash()` |
 | Async waiting, success, and failure labels | `ReelTextController.runWhile()` |
@@ -140,6 +140,7 @@ await label.runWhile(
 - Use `runWhile()` when the label lifecycle follows a `Future`; remember it rethrows failures after showing the failure label.
 - For buttons, chips, and compact controls, reserve a stable motion slot with layout constraints such as `SizedBox`, `ConstrainedBox`, or `ClipRect` so the control does not jump.
 - Keep outer button semantics clear. Add `semanticsLabel` when the rolling text needs a custom spoken value.
+- For `WidgetSpan` rich text, treat the widget as an anchored inline child. Animate the surrounding `TextSpan` text; use `semanticsLabel` when the widget contributes meaning that is not already in the text.
 - Keep `respectDisableAnimations` at its default `true` unless the user explicitly asks to ignore reduced motion.
 - Use `Directionality` or `textDirection` when the label is outside an already directional subtree.
 - Preload async fonts before the first `ReelText` frame when the app relies on dynamically loaded fonts.
@@ -165,14 +166,13 @@ await label.runWhile(
 - "Animate a hero paragraph" -> keep `Text`; consider only a short rotating word or action label.
 - "Animate spellcheck corrections in a field" -> use `ReelTextEditingController`, not an overlay outside `EditableText`.
 - "Support RTL/mixed bidi labels" -> use `Directionality`/`textDirection` and verify visual order in context.
+- "Add an inline status icon or badge to rich text" -> use `ReelText.rich` with `WidgetSpan`; keep the widget anchored and verify the surrounding text rolls without layout jumps.
 
 ## Pressure Test Evidence
 
-Recorded on 2026-06-22 for the `0.2.0` package release. This combines a manual pressure review against the skill contract, a Dart `skills` CLI install smoke test, and a read-only Codex agent smoke test from a temporary Flutter app using this checkout as a path dependency.
+Recorded on 2026-06-23 for the `0.3.0` package release. This combines a manual pressure review against the skill contract and the current `npx skills` install flow.
 
-Packaging correction for `0.2.1`: the installed skill name is `reel-text`
-so it matches the shared Agent Skills naming rule of lowercase letters,
-numbers, and hyphens. Install from the GitHub repository with:
+Install the bundled skill from the GitHub repository with:
 
 ```bash
 npx skills add KickNext/reel_text --skill reel-text --agent universal --yes
@@ -186,27 +186,15 @@ Scenario outcomes:
 - "Animate a hero paragraph" -> keep the paragraph as plain `Text`; consider only a short rotating word or action label if it has stateful meaning.
 - "Animate spellcheck corrections in a field" -> choose `ReelTextEditingController` and validated `ReelTextEditReplacement` ranges, not an overlay outside `EditableText`.
 - "Support RTL/mixed bidi labels" -> require `Directionality` or `textDirection`, then verify visual order in context.
+- "Add a badge inside styled rich text" -> choose `ReelText.rich` with a `WidgetSpan` anchor; verify the widget stays inline while adjacent text rolls.
 
 CLI install evidence:
 
-- Created a temporary Flutter app.
-- Added `reel_text` from this checkout as a path dependency.
-- Ran `skills get reel_text --ide codex`; the CLI discovered and installed the
-  legacy `reel_text-usage` name used in `0.2.0`.
-- Ran `skills list -C <temporary app>`; output listed
-  `generic -> reel_text -> reel_text-usage`.
+- Created a temporary install directory.
+- Ran `npx skills add KickNext/reel_text --skill reel-text --agent universal --yes`.
+- The CLI found one skill and installed `reel-text` into `./.agents/skills/reel-text` using the universal Agent Skills layout.
 
-Codex agent smoke evidence:
-
-- Ran a read-only `codex exec` prompt from the temporary app:
-  `Use $reel_text-usage. Do not edit files. Review this Flutter request: "Make every Text widget in this app animated."`
-- The agent found and read the package-bundled
-  `skills/reel_text-usage/SKILL.md`, scanned the stock counter app, and
-  rejected broad animation.
-- The agent identified only the changing counter value as a qualifying stateful target and selected `ReelText('$_counter')`, while keeping the app title and explanatory sentence as plain `Text`.
-- No files were edited during the smoke test.
-
-Release note: this evidence validates the optional agent skill, install path, and one representative Codex agent decision path. It does not indicate runtime API or widget behavior changes.
+Release note: this evidence validates the optional agent skill install path. It does not indicate runtime API or widget behavior changes.
 
 ## Verification
 
