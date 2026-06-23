@@ -97,12 +97,8 @@ class _WidgetSpanFace extends StatelessWidget {
       alignment: _placeholderAlignment(span.alignment),
       child: observer,
     );
-    if (span.alignment != ui.PlaceholderAlignment.baseline) {
-      return defaultFace;
-    }
-
     final metrics = layout.widgetSpanMetricsFor(index, span);
-    if (metrics == null || metrics.size == Size.zero) {
+    if (metrics == null) {
       return defaultFace;
     }
 
@@ -118,7 +114,7 @@ class _WidgetSpanFace extends StatelessWidget {
         child: Transform.translate(
           offset: Offset(
             0,
-            lineBaseline - (metrics.baselineOffset ?? metrics.size.height),
+            _placeholderOffsetY(span, metrics),
           ),
           child: Align(
             widthFactor: 1,
@@ -129,6 +125,19 @@ class _WidgetSpanFace extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  double _placeholderOffsetY(WidgetSpan span, _WidgetSpanMetrics metrics) {
+    final height = metrics.size.height;
+    return switch (span.alignment) {
+      ui.PlaceholderAlignment.top => 0,
+      ui.PlaceholderAlignment.middle => (lineHeight - height) / 2,
+      ui.PlaceholderAlignment.bottom => lineHeight - height,
+      ui.PlaceholderAlignment.baseline =>
+        lineBaseline - (metrics.baselineOffset ?? height),
+      ui.PlaceholderAlignment.aboveBaseline => lineBaseline - height,
+      ui.PlaceholderAlignment.belowBaseline => lineBaseline,
+    };
   }
 }
 
