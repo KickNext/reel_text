@@ -69,7 +69,7 @@ Use $reel-text to add meaningful rolling text transitions to this Flutter UI.
 - Status labels: `Export -> Exporting... -> Exported`.
 - Small counters, scoreboards, and compact metrics.
 - Rotating hero words or action labels.
-- Rich text phrases that need inline styles.
+- Rich text phrases that need inline styles or anchored inline widgets.
 - Editable text corrections where the replacement should animate in place.
 
 Keep it focused on short, high-signal text. Long paragraphs are better left to
@@ -80,7 +80,7 @@ plain `Text`.
 | Need | Use |
 | --- | --- |
 | Declarative one-line text | `ReelText('Copy')` |
-| Styled inline phrase | `ReelText.rich(TextSpan(...))` |
+| Styled inline phrase or anchored inline widget | `ReelText.rich(TextSpan(...))` |
 | Imperative labels | `ReelTextController` with `ReelText.controller` |
 | Temporary button feedback | `ReelTextController.flash()` |
 | Async waiting/success/failure labels | `ReelTextController.runWhile()` |
@@ -251,7 +251,8 @@ SelectionArea(
 );
 ```
 
-Use `ReelText.rich` when the changing phrase needs inline styles:
+Use `ReelText.rich` when the changing phrase needs inline styles or anchored
+inline widgets:
 
 ```dart
 ReelText.rich(
