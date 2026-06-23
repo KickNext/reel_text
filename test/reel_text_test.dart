@@ -1383,6 +1383,60 @@ void main() {
     );
   });
 
+  testWidgets('rich text keeps colorBuilder totals valid for moved WidgetSpan',
+      (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('reel_rich_color_total_widget');
+    final colorCalls = <String>[];
+    final options = ReelTextOptions(
+      colorBuilder: (index, total) {
+        if (index < 0 || index >= total) {
+          throw StateError('colorBuilder received $index/$total');
+        }
+        colorCalls.add('$index/$total');
+        return const Color(0xff38bdf8);
+      },
+    );
+
+    TextSpan spanFor({required bool widgetAtEnd}) {
+      final widget = WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: const SizedBox(key: widgetKey, width: 18, height: 18),
+      );
+      return TextSpan(
+        children: widgetAtEnd
+            ? [
+                const TextSpan(text: 'A'),
+                const TextSpan(text: 'B'),
+                widget,
+              ]
+            : [
+                const TextSpan(text: 'A'),
+                widget,
+                const TextSpan(text: 'B'),
+              ],
+      );
+    }
+
+    Widget frame(InlineSpan span) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(span, options: options),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(spanFor(widgetAtEnd: false)));
+    await tester.pumpWidget(frame(spanFor(widgetAtEnd: true)));
+
+    expect(tester.takeException(), isNull);
+    expect(colorCalls, contains('3/4'));
+  });
+
   testWidgets('rich text treats reordered keyed WidgetSpans as changed slots', (
     tester,
   ) async {
@@ -1983,6 +2037,87 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(reelChildTop, closeTo(richChildTop, 1.0));
+    expect(reelBox.top, closeTo(richBox.top, 1.0));
+    expect(reelBox.bottom, closeTo(richBox.bottom, 1.0));
+  });
+
+  testWidgets('rich text recomputes WidgetSpan metrics when metadata changes', (
+    tester,
+  ) async {
+    const richTextKey = ValueKey('reel_rich_metadata_reference');
+    const reelKey = ValueKey('reel_rich_metadata_reel');
+    const richChildKey = ValueKey('reel_rich_metadata_reference_child');
+    const reelChildKey = ValueKey('reel_rich_metadata_reel_child');
+    const lineStyle = TextStyle(fontSize: 38, fontWeight: FontWeight.w700);
+    const childStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w400);
+
+    TextSpan spanFor(Key childKey, PlaceholderAlignment alignment) {
+      return TextSpan(
+        style: lineStyle,
+        children: [
+          const TextSpan(text: 'A'),
+          WidgetSpan(
+            alignment: alignment,
+            baseline: alignment == PlaceholderAlignment.baseline
+                ? TextBaseline.alphabetic
+                : null,
+            child: Text('xy', key: childKey, style: childStyle),
+          ),
+          const TextSpan(text: 'B'),
+        ],
+      );
+    }
+
+    TextBox placeholderBox(Finder paragraphFinder) {
+      final paragraph = tester.renderObject<RenderParagraph>(paragraphFinder);
+      final boxes = paragraph.getBoxesForSelection(
+        const TextSelection(baseOffset: 1, extentOffset: 2),
+      );
+      expect(boxes, hasLength(1));
+      return boxes.single;
+    }
+
+    Widget frame(PlaceholderAlignment alignment) {
+      return MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  key: richTextKey,
+                  text: spanFor(richChildKey, alignment),
+                ),
+                const SizedBox(height: 24),
+                SelectionArea(
+                  child: ReelText.rich(
+                    spanFor(reelChildKey, alignment),
+                    key: reelKey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(PlaceholderAlignment.middle));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.pumpWidget(frame(PlaceholderAlignment.baseline));
+    await tester.pump();
+    await tester.pump();
+
+    final richBox = placeholderBox(find.byKey(richTextKey));
+    final reelBox = placeholderBox(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+
+    expect(tester.takeException(), isNull);
     expect(reelBox.top, closeTo(richBox.top, 1.0));
     expect(reelBox.bottom, closeTo(richBox.bottom, 1.0));
   });

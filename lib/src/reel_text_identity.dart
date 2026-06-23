@@ -21,6 +21,13 @@ bool _widgetSpansEquivalentForUnchanged(WidgetSpan from, WidgetSpan to) {
   return true;
 }
 
+bool _widgetSpansEquivalentForMetrics(WidgetSpan from, WidgetSpan to) {
+  return _widgetSpansEquivalentForUnchanged(from, to) &&
+      from.alignment == to.alignment &&
+      from.baseline == to.baseline &&
+      from.style == to.style;
+}
+
 Key? _widgetAnchorKey(WidgetSpan span) => _WidgetSpanIdentity.of(span).key;
 
 GlobalKey? _globalWidgetAnchorKey(WidgetSpan span) {

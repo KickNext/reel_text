@@ -19,9 +19,6 @@ class _RollPlan {
   }) {
     final fromOrder = from.visualOrder;
     final toOrder = to.visualOrder;
-    final state = _SlotBuildState(
-      totalSlots: math.max(fromOrder.length, toOrder.length),
-    );
     final chunks = <_PlanChunk>[];
     final anchors = _matchedWidgetAnchors(from, to);
     var fromStart = 0;
@@ -53,6 +50,17 @@ class _RollPlan {
     ));
 
     _sortPlanChunks(chunks, fromOrder, toOrder);
+
+    final state = _SlotBuildState(
+      totalSlots: _planSlotCount(
+        chunks: chunks,
+        from: from,
+        to: to,
+        fromVisualOrder: fromOrder,
+        toVisualOrder: toOrder,
+        alignVisualOrderFromEnd: alignVisualOrderFromEnd,
+      ),
+    );
 
     for (final chunk in chunks) {
       if (chunk is _PlanAnchorChunk) {
@@ -89,6 +97,37 @@ class _RollPlan {
   }
 }
 
+int _planSlotCount({
+  required List<_PlanChunk> chunks,
+  required _MeasuredReelTextRun from,
+  required _MeasuredReelTextRun to,
+  required List<int> fromVisualOrder,
+  required List<int> toVisualOrder,
+  required bool alignVisualOrderFromEnd,
+}) {
+  var count = 0;
+  for (final chunk in chunks) {
+    if (chunk is _PlanAnchorChunk) {
+      count++;
+      continue;
+    }
+    final segment = chunk as _PlanSegmentChunk;
+    _visitPlanSegmentSlots(
+      from: from,
+      to: to,
+      fromVisualOrder: fromVisualOrder,
+      toVisualOrder: toVisualOrder,
+      alignVisualOrderFromEnd: alignVisualOrderFromEnd,
+      fromStart: segment.fromStart,
+      fromEnd: segment.fromEnd,
+      toStart: segment.toStart,
+      toEnd: segment.toEnd,
+      visit: (_, __) => count++,
+    );
+  }
+  return count;
+}
+
 void _appendPlanSegment({
   required _SlotBuildState state,
   required ReelTextOptions options,
@@ -101,6 +140,39 @@ void _appendPlanSegment({
   required int fromEnd,
   required int toStart,
   required int toEnd,
+}) {
+  _visitPlanSegmentSlots(
+    from: from,
+    to: to,
+    fromVisualOrder: fromVisualOrder,
+    toVisualOrder: toVisualOrder,
+    alignVisualOrderFromEnd: alignVisualOrderFromEnd,
+    fromStart: fromStart,
+    fromEnd: fromEnd,
+    toStart: toStart,
+    toEnd: toEnd,
+    visit: (fromEndpoint, toEndpoint) {
+      _appendSlot(
+        state: state,
+        options: options,
+        from: fromEndpoint,
+        to: toEndpoint,
+      );
+    },
+  );
+}
+
+void _visitPlanSegmentSlots({
+  required _MeasuredReelTextRun from,
+  required _MeasuredReelTextRun to,
+  required List<int> fromVisualOrder,
+  required List<int> toVisualOrder,
+  required bool alignVisualOrderFromEnd,
+  required int fromStart,
+  required int fromEnd,
+  required int toStart,
+  required int toEnd,
+  required void Function(_SlotEndpoint? from, _SlotEndpoint? to) visit,
 }) {
   final fromOrder = _visualOrderInRange(
     fromVisualOrder,
@@ -136,12 +208,7 @@ void _appendPlanSegment({
     if (fromEndpoint == null && toEndpoint == null) {
       continue;
     }
-    _appendSlot(
-      state: state,
-      options: options,
-      from: fromEndpoint,
-      to: toEndpoint,
-    );
+    visit(fromEndpoint, toEndpoint);
   }
 }
 

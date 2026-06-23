@@ -31,7 +31,7 @@ class _WidgetSpanSizeRegistry {
     if (identical(entry.span, span)) {
       return entry.metrics;
     }
-    if (_widgetSpansEquivalentForUnchanged(entry.span, span)) {
+    if (_widgetSpansEquivalentForMetrics(entry.span, span)) {
       return entry.metrics;
     }
     return null;

@@ -298,6 +298,7 @@ class _RenderWidgetSpanSizeObserver extends RenderProxyBox {
     }
     _identity = value;
     _reportedMetrics = null;
+    markNeedsLayout();
   }
 
   @override
