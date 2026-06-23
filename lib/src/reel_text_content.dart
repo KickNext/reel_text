@@ -57,7 +57,8 @@ class _ReelTextContent {
 
   Iterable<_ReelTextWidgetToken> get widgetTokens sync* {
     for (final index in widgetTokenIndexes) {
-      yield _ReelTextWidgetToken(index, tokens[index].widgetSpan!);
+      final token = tokens[index];
+      yield _ReelTextWidgetToken(index, token.widgetSpan!, token.style);
     }
   }
 }
@@ -81,10 +82,11 @@ class _ReelTextToken {
 }
 
 class _ReelTextWidgetToken {
-  const _ReelTextWidgetToken(this.index, this.span);
+  const _ReelTextWidgetToken(this.index, this.span, this.style);
 
   final int index;
   final WidgetSpan span;
+  final TextStyle style;
 }
 
 const _placeholderGlyph = '\uFFFC';

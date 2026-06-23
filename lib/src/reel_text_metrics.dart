@@ -57,6 +57,16 @@ class _WidgetSpanMetrics {
   final Size size;
   final double? baselineOffset;
 
+  _WidgetSpanMetrics unscaledBy(double scale) {
+    if (scale == 1) {
+      return this;
+    }
+    return _WidgetSpanMetrics(
+      size: Size(size.width / scale, size.height / scale),
+      baselineOffset: baselineOffset == null ? null : baselineOffset! / scale,
+    );
+  }
+
   @override
   bool operator ==(Object other) {
     return other is _WidgetSpanMetrics &&

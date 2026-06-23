@@ -15,6 +15,8 @@ class _ReelTextSelection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textScaler =
+        MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
     final visual = ExcludeSemantics(
       child: SelectionContainer.disabled(child: child),
     );
@@ -35,6 +37,7 @@ class _ReelTextSelection extends StatelessWidget {
               text: _transparentTextSpan(
                 content,
                 layout,
+                textScaler,
               ),
               textAlign: textAlign,
               textDirection: layout.textDirection,
@@ -42,8 +45,7 @@ class _ReelTextSelection extends StatelessWidget {
               softWrap: false,
               maxLines: 1,
               strutStyle: layout.strutStyle,
-              textScaler:
-                  MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling,
+              textScaler: textScaler,
               selectionRegistrar: registrar,
               selectionColor:
                   DefaultSelectionStyle.of(context).selectionColor ??
@@ -59,6 +61,7 @@ class _ReelTextSelection extends StatelessWidget {
 TextSpan _transparentTextSpan(
   _ReelTextContent content,
   _ReelTextLayoutContext layout,
+  TextScaler textScaler,
 ) {
   return TextSpan(
     children: [
@@ -67,6 +70,7 @@ TextSpan _transparentTextSpan(
         _WidgetSpanSizeCursor(
           content.widgetTokens.toList(),
           layout,
+          textScaler,
         ),
       ),
     ],
@@ -118,10 +122,11 @@ InlineSpan _transparentInlineSpan(
 }
 
 class _WidgetSpanSizeCursor {
-  _WidgetSpanSizeCursor(this.widgetTokens, this.layout);
+  _WidgetSpanSizeCursor(this.widgetTokens, this.layout, this.textScaler);
 
   final List<_ReelTextWidgetToken> widgetTokens;
   final _ReelTextLayoutContext layout;
+  final TextScaler textScaler;
   var _widgetOrdinal = 0;
 
   _WidgetSpanMetrics nextMetrics() {
@@ -129,8 +134,10 @@ class _WidgetSpanSizeCursor {
       return const _WidgetSpanMetrics(size: Size.zero, baselineOffset: null);
     }
     final token = widgetTokens[_widgetOrdinal++];
-    return layout.widgetSpanMetricsFor(token.index, token.span) ??
+    final metrics = layout.widgetSpanMetricsFor(token.index, token.span) ??
         const _WidgetSpanMetrics(size: Size.zero, baselineOffset: null);
+    final scale = _widgetSpanTextScaleFactor(textScaler, token.style);
+    return metrics.unscaledBy(scale);
   }
 }
 

@@ -23,6 +23,7 @@ class _SettledTokenSlot extends StatelessWidget {
       return _WidgetSpanFace(
         token.widgetSpan!,
         index: index,
+        style: token.style,
         lineHeight: height,
         lineBaseline: baselineFor(token.widgetSpan!.baseline),
         layout: layout,
@@ -90,6 +91,7 @@ class _RollingTokenSlot extends StatelessWidget {
       return _WidgetSpanFace(
         data.toToken!.widgetSpan!,
         index: data.toEndpoint!.index,
+        style: data.toToken!.style,
         lineHeight: data.metrics.height,
         lineBaseline:
             toRun.metrics.baselineFor(data.toToken!.widgetSpan!.baseline),
@@ -124,6 +126,7 @@ class _RollingTokenSlot extends StatelessWidget {
       return _WidgetSpanFace(
         visibleToken.widgetSpan!,
         index: visibleIndex,
+        style: visibleToken.style,
         lineHeight: data.metrics.height,
         lineBaseline: visibleRun.metrics.baselineFor(
           visibleToken.widgetSpan!.baseline,

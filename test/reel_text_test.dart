@@ -2081,6 +2081,87 @@ void main() {
     }
   });
 
+  testWidgets('rich text scales WidgetSpan children with text scaler', (
+    tester,
+  ) async {
+    const richTextKey = ValueKey('reel_rich_scaled_widget_reference');
+    const reelKey = ValueKey('reel_rich_scaled_widget_reel');
+    const richChildKey = ValueKey('reel_rich_scaled_widget_reference_child');
+    const reelChildKey = ValueKey('reel_rich_scaled_widget_reel_child');
+    const lineStyle = TextStyle(fontSize: 24, fontWeight: FontWeight.w700);
+    const textScaler = TextScaler.linear(2);
+
+    TextSpan spanFor(Key childKey) {
+      return TextSpan(
+        style: lineStyle,
+        children: [
+          const TextSpan(text: 'A'),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: SizedBox(key: childKey, width: 18, height: 12),
+          ),
+          const TextSpan(text: 'B'),
+        ],
+      );
+    }
+
+    TextBox placeholderBox(Finder paragraphFinder) {
+      final paragraph = tester.renderObject<RenderParagraph>(paragraphFinder);
+      final boxes = paragraph.getBoxesForSelection(
+        const TextSelection(baseOffset: 1, extentOffset: 2),
+      );
+      expect(boxes, hasLength(1));
+      return boxes.single;
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: textScaler),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    key: richTextKey,
+                    text: spanFor(richChildKey),
+                    textScaler: textScaler,
+                  ),
+                  const SizedBox(height: 24),
+                  SelectionArea(
+                    child: ReelText.rich(spanFor(reelChildKey), key: reelKey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final richBox = placeholderBox(find.byKey(richTextKey));
+    final reelBox = placeholderBox(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect((richBox.right - richBox.left).abs(), closeTo(36, 1.0));
+    expect((richBox.bottom - richBox.top).abs(), closeTo(24, 1.0));
+    expect(
+      (reelBox.right - reelBox.left).abs(),
+      closeTo((richBox.right - richBox.left).abs(), 1.0),
+    );
+    expect(
+      (reelBox.bottom - reelBox.top).abs(),
+      closeTo((richBox.bottom - richBox.top).abs(), 1.0),
+    );
+  });
+
   testWidgets('rich text selection includes WidgetSpan width', (tester) async {
     const span = TextSpan(
       children: [

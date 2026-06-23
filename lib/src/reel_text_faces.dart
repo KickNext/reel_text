@@ -72,6 +72,7 @@ class _WidgetSpanFace extends StatelessWidget {
   const _WidgetSpanFace(
     this.span, {
     required this.index,
+    required this.style,
     required this.lineHeight,
     required this.lineBaseline,
     required this.layout,
@@ -79,17 +80,26 @@ class _WidgetSpanFace extends StatelessWidget {
 
   final WidgetSpan span;
   final int index;
+  final TextStyle style;
   final double lineHeight;
   final double lineBaseline;
   final _ReelTextLayoutContext layout;
 
   @override
   Widget build(BuildContext context) {
+    final textScaleFactor = _widgetSpanTextScaleFactor(
+      MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling,
+      style,
+    );
     final observer = _WidgetSpanSizeObserver(
       identity: span,
       onMetricsChanged: (metrics) =>
           layout.onWidgetSpanMetricsChanged(index, span, metrics),
-      child: span.child,
+      child: _ScaledWidgetSpanChild(
+        span: span,
+        textScaleFactor: textScaleFactor,
+        child: span.child,
+      ),
     );
     final defaultFace = Align(
       widthFactor: 1,
@@ -138,6 +148,109 @@ class _WidgetSpanFace extends StatelessWidget {
       ui.PlaceholderAlignment.aboveBaseline => lineBaseline - height,
       ui.PlaceholderAlignment.belowBaseline => lineBaseline,
     };
+  }
+}
+
+class _ScaledWidgetSpanChild extends SingleChildRenderObjectWidget {
+  const _ScaledWidgetSpanChild({
+    required this.span,
+    required this.textScaleFactor,
+    required super.child,
+  });
+
+  final WidgetSpan span;
+  final double textScaleFactor;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderScaledWidgetSpanChild(textScaleFactor);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderScaledWidgetSpanChild renderObject,
+  ) {
+    renderObject.scale = textScaleFactor;
+  }
+}
+
+class _RenderScaledWidgetSpanChild extends RenderBox
+    with RenderObjectWithChildMixin<RenderBox> {
+  _RenderScaledWidgetSpanChild(double scale) : _scale = scale;
+
+  double get scale => _scale;
+  double _scale;
+  set scale(double value) {
+    if (_scale == value) {
+      return;
+    }
+    _scale = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.constrain(Size.zero);
+      return;
+    }
+
+    child.layout(
+      BoxConstraints(maxWidth: constraints.maxWidth / scale),
+      parentUsesSize: true,
+    );
+    size = constraints.constrain(
+      Size(child.size.width * scale, child.size.height * scale),
+    );
+  }
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) {
+    final childBaseline = child?.getDistanceToActualBaseline(baseline);
+    return childBaseline == null ? null : childBaseline * scale;
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    transform.scaleByDouble(scale, scale, scale, 1);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) {
+      layer = null;
+      return;
+    }
+    if (scale == 1) {
+      context.paintChild(child, offset);
+      layer = null;
+      return;
+    }
+    layer = context.pushTransform(
+      needsCompositing,
+      offset,
+      Matrix4.diagonal3Values(scale, scale, 1),
+      (context, offset) => context.paintChild(child, offset),
+      oldLayer: layer as TransformLayer?,
+    );
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null) {
+      return false;
+    }
+    return result.addWithPaintTransform(
+      transform: Matrix4.diagonal3Values(scale, scale, 1),
+      position: position,
+      hitTest: (result, transformed) {
+        return child.hitTest(result, position: transformed);
+      },
+    );
   }
 }
 
@@ -224,4 +337,16 @@ Alignment _placeholderAlignment(ui.PlaceholderAlignment alignment) {
     ui.PlaceholderAlignment.belowBaseline =>
       Alignment.bottomCenter,
   };
+}
+
+double _widgetSpanTextScaleFactor(TextScaler textScaler, TextStyle style) {
+  final fontSize = style.fontSize ?? kDefaultFontSize;
+  if (fontSize <= 0 || !fontSize.isFinite) {
+    return 1;
+  }
+  final scaledFontSize = textScaler.scale(fontSize);
+  if (scaledFontSize <= 0 || !scaledFontSize.isFinite) {
+    return 1;
+  }
+  return scaledFontSize / fontSize;
 }
