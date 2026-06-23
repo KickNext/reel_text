@@ -153,8 +153,6 @@ class _ReelTextState extends State<ReelText>
 
   String get _displayedText => _displayedFrame.text;
 
-  String? get _targetText => _targetFrame?.text;
-
   @override
   void initState() {
     super.initState();
@@ -286,7 +284,10 @@ class _ReelTextState extends State<ReelText>
     }
 
     if (_controller.isAnimating && !options.interrupt) {
-      if (force || text != _targetText) {
+      final currentTarget = _targetFrame;
+      if (force ||
+          currentTarget == null ||
+          !_sameFrameTarget(currentTarget, targetFrame)) {
         _pending = _PendingRoll(targetFrame, options, force: force);
       }
       return;
@@ -340,7 +341,7 @@ class _ReelTextState extends State<ReelText>
     final pending = _pending;
     _pending = null;
     if (pending != null &&
-        (pending.force || pending.frame.text != _displayedText)) {
+        (pending.force || !_sameFrameTarget(pending.frame, _displayedFrame))) {
       _rollTo(
         pending.frame.text,
         pending.options,
@@ -402,15 +403,15 @@ class _ReelTextState extends State<ReelText>
     );
   }
 
-  void _handleWidgetSpanSizeChanged(int index, Size size) {
+  void _handleWidgetSpanSizeChanged(int index, WidgetSpan span, Size size) {
     if (!mounted) {
       return;
     }
-    if (_widgetSpanSizes.hasSize(index, size)) {
+    if (_widgetSpanSizes.hasSize(index, span, size)) {
       return;
     }
     setState(() {
-      _widgetSpanSizes.setSize(index, size);
+      _widgetSpanSizes.setSize(index, span, size);
     });
   }
 
@@ -419,7 +420,7 @@ class _ReelTextState extends State<ReelText>
       textDirection: direction,
       locale: widget.locale,
       strutStyle: widget.strutStyle,
-      widgetSpanSizes: _widgetSpanSizes.sizes,
+      widgetSpanSizeFor: _widgetSpanSizes.sizeFor,
       onWidgetSpanSizeChanged: _handleWidgetSpanSizeChanged,
     );
   }
@@ -481,6 +482,10 @@ class _ReelTextState extends State<ReelText>
           targetFrame.richText,
         );
   }
+}
+
+bool _sameFrameTarget(_ReelTextFrame a, _ReelTextFrame b) {
+  return a.text == b.text && identical(a.richText, b.richText);
 }
 
 bool _sameStringList(List<String>? a, List<String>? b) {

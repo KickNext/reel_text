@@ -34,28 +34,99 @@ class _SettledReelText extends StatelessWidget {
       ],
     );
 
-    if (content.hasWidgets) {
-      return tokenRow;
+    return _SettledTokenRowViewport(
+      height: runMetrics.height,
+      alignment: layout.inlineStartAlignment,
+      child: tokenRow,
+    );
+  }
+}
+
+class _SettledTokenRowViewport extends SingleChildRenderObjectWidget {
+  const _SettledTokenRowViewport({
+    required this.height,
+    required this.alignment,
+    required super.child,
+  });
+
+  final double height;
+  final Alignment alignment;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderSettledTokenRowViewport(
+      height: height,
+      alignment: alignment,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderSettledTokenRowViewport renderObject,
+  ) {
+    renderObject
+      ..height = height
+      ..alignment = alignment;
+  }
+}
+
+class _RenderSettledTokenRowViewport extends RenderShiftedBox {
+  _RenderSettledTokenRowViewport({
+    required double height,
+    required Alignment alignment,
+  })  : _height = height,
+        _alignment = alignment,
+        super(null);
+
+  double _height;
+  Alignment _alignment;
+
+  double get height => _height;
+
+  set height(double value) {
+    if (_height == value) {
+      return;
+    }
+    _height = value;
+    markNeedsLayout();
+  }
+
+  Alignment get alignment => _alignment;
+
+  set alignment(Alignment value) {
+    if (_alignment == value) {
+      return;
+    }
+    _alignment = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.constrain(Size(0, height));
+      return;
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final viewportWidth = constraints.hasBoundedWidth
-            ? math.min(runMetrics.width, constraints.maxWidth)
-            : runMetrics.width;
-        return SizedBox(
-          width: viewportWidth,
-          height: runMetrics.height,
-          child: OverflowBox(
-            alignment: layout.inlineStartAlignment,
-            minWidth: 0,
-            maxWidth: double.infinity,
-            minHeight: runMetrics.height,
-            maxHeight: runMetrics.height,
-            child: tokenRow,
-          ),
-        );
-      },
+    child.layout(
+      BoxConstraints(
+        minWidth: 0,
+        maxWidth: double.infinity,
+        minHeight: height,
+        maxHeight: height,
+      ),
+      parentUsesSize: true,
+    );
+    size = constraints.constrain(Size(child.size.width, height));
+
+    final childParentData = child.parentData! as BoxParentData;
+    childParentData.offset = alignment.alongOffset(
+      Offset(
+        size.width - child.size.width,
+        size.height - child.size.height,
+      ),
     );
   }
 }

@@ -34,7 +34,7 @@ class _ReelTextSelection extends StatelessWidget {
               key: const ValueKey('reel_text_selection_surface'),
               text: _transparentTextSpan(
                 content,
-                layout.widgetSpanSizes,
+                layout,
               ),
               textAlign: textAlign,
               textDirection: layout.textDirection,
@@ -58,15 +58,15 @@ class _ReelTextSelection extends StatelessWidget {
 
 TextSpan _transparentTextSpan(
   _ReelTextContent content,
-  Map<int, Size> widgetSpanSizes,
+  _ReelTextLayoutContext layout,
 ) {
   return TextSpan(
     children: [
       _transparentInlineSpan(
         content.span,
         _WidgetSpanSizeCursor(
-          content.widgetTokenIndexes.toList(),
-          widgetSpanSizes,
+          content.widgetTokens.toList(),
+          layout,
         ),
       ),
     ],
@@ -114,17 +114,17 @@ InlineSpan _transparentInlineSpan(
 }
 
 class _WidgetSpanSizeCursor {
-  _WidgetSpanSizeCursor(this.widgetTokenIndexes, this.sizes);
+  _WidgetSpanSizeCursor(this.widgetTokens, this.layout);
 
-  final List<int> widgetTokenIndexes;
-  final Map<int, Size> sizes;
+  final List<_ReelTextWidgetToken> widgetTokens;
+  final _ReelTextLayoutContext layout;
   var _widgetOrdinal = 0;
 
   Size nextSize() {
-    if (_widgetOrdinal >= widgetTokenIndexes.length) {
+    if (_widgetOrdinal >= widgetTokens.length) {
       return Size.zero;
     }
-    final tokenIndex = widgetTokenIndexes[_widgetOrdinal++];
-    return sizes[tokenIndex] ?? Size.zero;
+    final token = widgetTokens[_widgetOrdinal++];
+    return layout.widgetSpanSizeFor(token.index, token.span) ?? Size.zero;
   }
 }

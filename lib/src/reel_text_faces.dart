@@ -91,7 +91,8 @@ class _WidgetSpanFace extends StatelessWidget {
       child: Align(
         alignment: _placeholderAlignment(span.alignment),
         child: _WidgetSpanSizeObserver(
-          onSizeChanged: (size) => layout.onWidgetSpanSizeChanged(index, size),
+          onSizeChanged: (size) =>
+              layout.onWidgetSpanSizeChanged(index, span, size),
           child: span.child,
         ),
       ),

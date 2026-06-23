@@ -1,4 +1,4 @@
-## Unreleased
+## 0.3.0
 
 - Added `WidgetSpan` support to `ReelText.rich`: inline widgets now stay in the
   reel row while neighboring text spans keep rolling.

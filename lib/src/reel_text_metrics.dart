@@ -5,27 +5,45 @@ class _ReelTextLayoutContext {
     required this.textDirection,
     required this.locale,
     required this.strutStyle,
-    required this.widgetSpanSizes,
+    required this.widgetSpanSizeFor,
     required this.onWidgetSpanSizeChanged,
   });
 
   final TextDirection textDirection;
   final Locale? locale;
   final StrutStyle? strutStyle;
-  final Map<int, Size> widgetSpanSizes;
-  final void Function(int index, Size size) onWidgetSpanSizeChanged;
+  final Size? Function(int index, WidgetSpan span) widgetSpanSizeFor;
+  final void Function(int index, WidgetSpan span, Size size)
+      onWidgetSpanSizeChanged;
 
   Alignment get inlineStartAlignment => _inlineStartAlignment(textDirection);
 }
 
 class _WidgetSpanSizeRegistry {
-  final sizes = <int, Size>{};
+  final _entries = <int, _WidgetSpanSizeEntry>{};
 
-  bool hasSize(int index, Size size) => sizes[index] == size;
-
-  void setSize(int index, Size size) {
-    sizes[index] = size;
+  Size? sizeFor(int index, WidgetSpan span) {
+    final entry = _entries[index];
+    if (entry == null || !identical(entry.span, span)) {
+      return null;
+    }
+    return entry.size;
   }
+
+  bool hasSize(int index, WidgetSpan span, Size size) {
+    return sizeFor(index, span) == size;
+  }
+
+  void setSize(int index, WidgetSpan span, Size size) {
+    _entries[index] = _WidgetSpanSizeEntry(span, size);
+  }
+}
+
+class _WidgetSpanSizeEntry {
+  const _WidgetSpanSizeEntry(this.span, this.size);
+
+  final WidgetSpan span;
+  final Size size;
 }
 
 class _MeasuredReelTextRun {
@@ -127,7 +145,7 @@ class _TextRunMetrics {
       maxLines: 1,
     );
     painter.setPlaceholderDimensions(
-      _placeholderDimensionsFor(content, layout.widgetSpanSizes),
+      _placeholderDimensionsFor(content, layout.widgetSpanSizeFor),
     );
     painter.layout();
 
@@ -212,14 +230,14 @@ class _TextRunMetrics {
 
 List<PlaceholderDimensions>? _placeholderDimensionsFor(
   _ReelTextContent content,
-  Map<int, Size> widgetSpanSizes,
+  Size? Function(int index, WidgetSpan span) widgetSpanSizeFor,
 ) {
   final dimensions = <PlaceholderDimensions>[];
   for (final widget in content.widgetTokens) {
     dimensions.add(
       _placeholderDimensionsForWidget(
         widget.span,
-        widgetSpanSizes[widget.index] ?? Size.zero,
+        widgetSpanSizeFor(widget.index, widget.span) ?? Size.zero,
       ),
     );
   }
