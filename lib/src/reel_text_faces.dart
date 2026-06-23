@@ -71,32 +71,24 @@ class _TextTokenText extends StatelessWidget {
 class _WidgetSpanFace extends StatelessWidget {
   const _WidgetSpanFace(
     this.span, {
-    required this.width,
-    required this.height,
     required this.index,
     required this.layout,
   });
 
   final WidgetSpan span;
-  final double width;
-  final double height;
   final int index;
   final _ReelTextLayoutContext layout;
 
   @override
   Widget build(BuildContext context) {
-    final measuredSize = layout.widgetSpanSizeFor(index, span);
-    final hasMeasuredSize = measuredSize != null && !measuredSize.isEmpty;
-    return SizedBox(
-      width: hasMeasuredSize && width > 0 ? width : null,
-      height: hasMeasuredSize && height > 0 ? height : null,
-      child: Align(
-        alignment: _placeholderAlignment(span.alignment),
-        child: _WidgetSpanSizeObserver(
-          onSizeChanged: (size) =>
-              layout.onWidgetSpanSizeChanged(index, span, size),
-          child: span.child,
-        ),
+    return Align(
+      widthFactor: 1,
+      heightFactor: 1,
+      alignment: _placeholderAlignment(span.alignment),
+      child: _WidgetSpanSizeObserver(
+        onSizeChanged: (size) =>
+            layout.onWidgetSpanSizeChanged(index, span, size),
+        child: span.child,
       ),
     );
   }

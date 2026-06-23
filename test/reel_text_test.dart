@@ -1694,6 +1694,53 @@ void main() {
     expect(tester.getSize(find.byKey(wideKey)).width, 84);
   });
 
+  testWidgets('rich text remeasures growing child inside same WidgetSpan', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rich_growing_widget');
+    const widgetKey = ValueKey('reel_rich_growing_widget_child');
+    final width = ValueNotifier<double>(20);
+    final span = TextSpan(
+      children: [
+        const TextSpan(text: 'ETA '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: ValueListenableBuilder<double>(
+            valueListenable: width,
+            builder: (context, value, _) {
+              return SizedBox(key: widgetKey, width: value, height: 18);
+            },
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText.rich(
+              span,
+              key: reelKey,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(tester.getSize(find.byKey(widgetKey)).width, 20);
+
+    width.value = 84;
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byKey(widgetKey)).width, 84);
+  });
+
   testWidgets('rich text selection includes WidgetSpan width', (tester) async {
     const span = TextSpan(
       children: [
