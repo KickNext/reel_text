@@ -24,7 +24,8 @@ class ReelText extends StatefulWidget {
   ///
   /// The span tree is split by grapheme clusters, so emoji sequences remain
   /// whole glyphs while each cluster keeps the effective style inherited from
-  /// the provided span.
+  /// the provided span. [WidgetSpan] leaves are kept as inline widgets while
+  /// neighboring text clusters roll.
   const ReelText.rich(
     InlineSpan this.richText, {
     super.key,
@@ -132,30 +133,32 @@ class ReelText extends StatefulWidget {
 class _ReelTextState extends State<ReelText>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late String _displayedText;
-  InlineSpan? _displayedRichText;
-  String? _targetText;
-  InlineSpan? _targetRichText;
-  _RollPlan? _plan;
-  _ReelTextCommand? _pending;
+  late _ReelTextFrame _displayedFrame;
+  _ReelTextFrame? _targetFrame;
+  _ActiveRoll? _roll;
+  _PendingRoll? _pending;
   Timer? _sequenceTimer;
   int _sequenceIndex = 0;
+  final _widgetSpanSizes = _WidgetSpanSizeRegistry();
 
   String get _effectiveText =>
       widget.controller?.value ??
-      widget.richText?.toPlainText(
-        includeSemanticsLabels: false,
-        includePlaceholders: false,
-      ) ??
+      (widget.richText == null ? null : _rollingTextFor(widget.richText!)) ??
       widget.text ??
       _firstSequenceValue(widget._sequenceValues) ??
       '';
 
+  _ReelTextFrame get _effectiveFrame =>
+      _ReelTextFrame(_effectiveText, widget.richText);
+
+  String get _displayedText => _displayedFrame.text;
+
+  String? get _targetText => _targetFrame?.text;
+
   @override
   void initState() {
     super.initState();
-    _displayedText = _effectiveText;
-    _displayedRichText = widget.richText;
+    _displayedFrame = _effectiveFrame;
     _controller = AnimationController(vsync: this)
       ..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
@@ -170,13 +173,11 @@ class _ReelTextState extends State<ReelText>
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Snap an in-flight roll when the platform switches to reduced motion.
-    if (_animationsDisabled && _targetText != null) {
+    if (_animationsDisabled && _targetFrame != null) {
       _controller.stop();
-      _displayedText = _targetText!;
-      _displayedRichText = _targetRichText;
-      _targetText = null;
-      _targetRichText = null;
-      _plan = null;
+      _displayedFrame = _targetFrame!;
+      _targetFrame = null;
+      _roll = null;
       _pending = null;
     }
   }
@@ -190,11 +191,9 @@ class _ReelTextState extends State<ReelText>
       _sequenceIndex = 0;
       if (widget._sequenceValues != null) {
         _controller.stop();
-        _displayedText = _effectiveText;
-        _displayedRichText = null;
-        _targetText = null;
-        _targetRichText = null;
-        _plan = null;
+        _displayedFrame = _effectiveFrame;
+        _targetFrame = null;
+        _roll = null;
         _pending = null;
         _startSequenceTimerIfNeeded();
         return;
@@ -203,11 +202,9 @@ class _ReelTextState extends State<ReelText>
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.removeListener(_handleControllerChange);
       widget.controller?.addListener(_handleControllerChange);
-      _displayedText = _effectiveText;
-      _displayedRichText = widget.richText;
-      _targetText = null;
-      _targetRichText = null;
-      _plan = null;
+      _displayedFrame = _effectiveFrame;
+      _targetFrame = null;
+      _roll = null;
       _controller.stop();
     } else if (widget.controller == null &&
         (oldWidget.text != widget.text ||
@@ -276,14 +273,13 @@ class _ReelTextState extends State<ReelText>
     InlineSpan? richText,
     bool force = false,
   }) {
+    final targetFrame = _ReelTextFrame(text, richText);
     if (_animationsDisabled) {
       _controller.stop();
       setState(() {
-        _displayedText = text;
-        _displayedRichText = richText;
-        _targetText = null;
-        _targetRichText = null;
-        _plan = null;
+        _displayedFrame = targetFrame;
+        _targetFrame = null;
+        _roll = null;
         _pending = null;
       });
       return;
@@ -291,66 +287,64 @@ class _ReelTextState extends State<ReelText>
 
     if (_controller.isAnimating && !options.interrupt) {
       if (force || text != _targetText) {
-        _pending = _ReelTextCommand(text, options, force: force);
+        _pending = _PendingRoll(targetFrame, options, force: force);
       }
       return;
     }
 
-    if (_controller.isAnimating && options.interrupt && _targetText != null) {
+    if (_controller.isAnimating && options.interrupt && _targetFrame != null) {
       _controller.stop();
-      _displayedText = _targetText!;
-      _displayedRichText = _targetRichText;
+      _displayedFrame = _targetFrame!;
+      _targetFrame = null;
       _pending = null;
-      _plan = null;
+      _roll = null;
     }
 
-    if (_displayedText == text && !force) {
+    if (_canReplaceWithoutRoll(targetFrame, force: force)) {
       setState(() {
-        _displayedRichText = richText;
-        _targetText = null;
-        _targetRichText = null;
-        _plan = null;
+        _displayedFrame = targetFrame;
+        _targetFrame = null;
+        _roll = null;
       });
       return;
     }
 
-    final plan = _createRollPlan(text, richText, options);
+    final roll = _createRoll(targetFrame, options);
 
     setState(() {
-      _targetText = text;
-      _targetRichText = richText;
-      _plan = plan;
+      _targetFrame = targetFrame;
+      _roll = roll;
     });
 
-    if (!plan.hasMotion) {
+    if (!roll.plan.hasMotion) {
       _finishRoll();
       return;
     }
 
-    _controller.duration = plan.totalDuration;
+    _controller.duration = roll.plan.totalDuration;
     _controller.forward(from: 0);
   }
 
   void _finishRoll() {
-    final finishedText = _targetText;
-    if (finishedText == null) {
+    final finishedFrame = _targetFrame;
+    if (finishedFrame == null) {
       return;
     }
     _controller.stop();
     setState(() {
-      _displayedText = finishedText;
-      _displayedRichText = _targetRichText;
-      _plan = null;
-      _targetText = null;
-      _targetRichText = null;
+      _displayedFrame = finishedFrame;
+      _roll = null;
+      _targetFrame = null;
     });
 
     final pending = _pending;
     _pending = null;
-    if (pending != null && (pending.force || pending.text != _displayedText)) {
+    if (pending != null &&
+        (pending.force || pending.frame.text != _displayedText)) {
       _rollTo(
-        pending.text,
-        widget.options._merge(pending.options),
+        pending.frame.text,
+        pending.options,
+        richText: pending.frame.richText,
         force: pending.force,
       );
     }
@@ -366,89 +360,28 @@ class _ReelTextState extends State<ReelText>
     final style = defaultStyle.merge(widget.style);
     final effectiveTextAlign =
         widget.textAlign ?? defaultTextStyle.textAlign ?? TextAlign.start;
-    final visibleText = _targetText ?? _displayedText;
-    final visibleRichText =
-        _targetText == null ? _displayedRichText : _targetRichText;
-    final visibleContent = _contentFor(visibleText, visibleRichText, style);
-    final visibleSemanticsText = _semanticsTextFor(
-      visibleText,
-      visibleRichText,
-    );
-    final plan = _plan;
+    final layout = _layoutContextFor(direction);
+    final visibleFrame = _targetFrame ?? _displayedFrame;
+    final visibleSemanticsText = visibleFrame.semanticsText;
+    final roll = _roll;
+    final visibleContent =
+        roll?.to.content ?? _displayedFrame.contentFor(style);
 
     Widget child;
-    if (plan == null) {
+    if (roll == null) {
       child = _SettledReelText(
-        content: _contentFor(_displayedText, _displayedRichText, style),
+        content: visibleContent,
         key: const ValueKey('reel_text_settled'),
-        textDirection: direction,
-        locale: widget.locale,
-        strutStyle: widget.strutStyle,
+        layout: layout,
       );
     } else {
-      final fromContent = _contentFor(plan.fromText, _displayedRichText, style);
-      final toContent = _contentFor(plan.toText, _targetRichText, style);
-      final fromMetrics = _TextRunMetrics.of(
-        context: context,
-        span: fromContent.span,
-        textDirection: direction,
-        locale: widget.locale,
-        strutStyle: widget.strutStyle,
-        text: plan.fromText,
-      );
-      final toMetrics = _TextRunMetrics.of(
-        context: context,
-        span: toContent.span,
-        textDirection: direction,
-        locale: widget.locale,
-        strutStyle: widget.strutStyle,
-        text: plan.toText,
-      );
-      final height = math.max(fromMetrics.height, toMetrics.height);
-      final anchorShrinkingRight =
-          _alignsToRight(effectiveTextAlign, direction) &&
-              toMetrics.width < fromMetrics.width;
-      child = AnimatedBuilder(
+      child = _RollingReelText(
+        plan: roll.plan,
+        fromRun: roll.from.run,
+        toRun: roll.to.run,
         animation: _controller,
-        builder: (context, _) {
-          final progressMs =
-              _controller.value * plan.totalDuration.inMilliseconds;
-          final width = _rollingWidth(plan, fromMetrics, toMetrics, progressMs);
-          final viewportWidth = anchorShrinkingRight ? toMetrics.width : width;
-          final rollingRow = Row(
-            key: const ValueKey('reel_text_rolling'),
-            mainAxisSize: MainAxisSize.min,
-            textDirection: TextDirection.ltr,
-            children: [
-              for (final slot in plan.slots)
-                _GlyphSlot(
-                  slot: slot,
-                  fromMetrics: fromMetrics,
-                  toMetrics: toMetrics,
-                  fromContent: fromContent,
-                  toContent: toContent,
-                  progressMs: progressMs,
-                  textDirection: direction,
-                  locale: widget.locale,
-                  strutStyle: widget.strutStyle,
-                ),
-            ],
-          );
-          return SizedBox(
-            width: viewportWidth,
-            height: height,
-            child: OverflowBox(
-              alignment: anchorShrinkingRight
-                  ? _inlineStartAlignment(direction)
-                  : _alignmentForTextAlign(effectiveTextAlign, direction),
-              minWidth: 0,
-              maxWidth: double.infinity,
-              minHeight: height,
-              maxHeight: height,
-              child: rollingRow,
-            ),
-          );
-        },
+        textAlign: effectiveTextAlign,
+        layout: layout,
       );
     }
 
@@ -463,97 +396,90 @@ class _ReelTextState extends State<ReelText>
       child: _ReelTextSelection(
         content: visibleContent,
         textAlign: effectiveTextAlign,
-        textDirection: direction,
-        locale: widget.locale,
-        strutStyle: widget.strutStyle,
+        layout: layout,
         child: child,
       ),
     );
   }
 
-  String _semanticsTextFor(String text, InlineSpan? richText) {
-    if (richText == null) {
-      return text;
+  void _handleWidgetSpanSizeChanged(int index, Size size) {
+    if (!mounted) {
+      return;
     }
-    return richText.toPlainText(
-      includeSemanticsLabels: true,
-      includePlaceholders: false,
+    if (_widgetSpanSizes.hasSize(index, size)) {
+      return;
+    }
+    setState(() {
+      _widgetSpanSizes.setSize(index, size);
+    });
+  }
+
+  _ReelTextLayoutContext _layoutContextFor(TextDirection direction) {
+    return _ReelTextLayoutContext(
+      textDirection: direction,
+      locale: widget.locale,
+      strutStyle: widget.strutStyle,
+      widgetSpanSizes: _widgetSpanSizes.sizes,
+      onWidgetSpanSizeChanged: _handleWidgetSpanSizeChanged,
     );
   }
 
-  _ReelTextContent _contentFor(
-    String text,
-    InlineSpan? richText,
-    TextStyle style,
+  _MeasuredReelTextRun _measuredRunFor(
+    _ReelTextContent content,
+    _ReelTextLayoutContext layout,
   ) {
-    if (richText == null) {
-      return _ReelTextContent.plain(text, style);
-    }
-
-    final plainText = richText.toPlainText(
-      includeSemanticsLabels: false,
-      includePlaceholders: false,
+    return _MeasuredReelTextRun.of(
+      context: context,
+      content: content,
+      layout: layout,
     );
-    if (plainText != text) {
-      return _ReelTextContent.plain(text, style);
-    }
-    return _ReelTextContent.rich(richText, style);
   }
 
-  _RollPlan _createRollPlan(
-    String text,
-    InlineSpan? richText,
-    ReelTextOptions options,
-  ) {
+  _ActiveRoll _createRoll(_ReelTextFrame targetFrame, ReelTextOptions options) {
     final direction = widget.textDirection ??
         Directionality.maybeOf(context) ??
         TextDirection.ltr;
     final defaultTextStyle = DefaultTextStyle.of(context);
     final style = defaultTextStyle.style.merge(widget.style);
-    final fromContent = _contentFor(_displayedText, _displayedRichText, style);
-    final toContent = _contentFor(text, richText, style);
-    final fromMetrics = _TextRunMetrics.of(
-      context: context,
-      span: fromContent.span,
-      textDirection: direction,
-      locale: widget.locale,
-      strutStyle: widget.strutStyle,
-      text: _displayedText,
-    );
-    final toMetrics = _TextRunMetrics.of(
-      context: context,
-      span: toContent.span,
-      textDirection: direction,
-      locale: widget.locale,
-      strutStyle: widget.strutStyle,
-      text: text,
+    final layout = _layoutContextFor(direction);
+    final from = _measureFrame(_displayedFrame, style, layout);
+    final to = _measureFrame(targetFrame, style, layout);
+    final plan = _RollPlan.create(
+      from: from.run,
+      to: to.run,
+      options: options,
+      alignVisualOrderFromEnd: direction == TextDirection.rtl,
     );
 
-    return _RollPlan.create(
-      fromText: _displayedText,
-      toText: text,
+    return _ActiveRoll(
+      from: from,
+      to: to,
       options: options,
-      fromVisualOrder: fromMetrics.visualOrder,
-      toVisualOrder: toMetrics.visualOrder,
-      alignVisualOrderFromEnd: direction == TextDirection.rtl,
+      plan: plan,
     );
   }
 
-  double _rollingWidth(
-    _RollPlan plan,
-    _TextRunMetrics fromMetrics,
-    _TextRunMetrics toMetrics,
-    double progressMs,
+  _MeasuredReelTextFrame _measureFrame(
+    _ReelTextFrame frame,
+    TextStyle style,
+    _ReelTextLayoutContext layout,
   ) {
-    return plan.slots.fold<double>(0, (sum, slot) {
-      final fromWidth =
-          slot.from.isEmpty ? 0.0 : fromMetrics.widthAt(slot.fromIndex);
-      final toWidth = slot.to.isEmpty ? 0.0 : toMetrics.widthAt(slot.toIndex);
-      if (!slot.changed) {
-        return sum + toWidth;
-      }
-      return sum + ui.lerpDouble(fromWidth, toWidth, slot.widthT(progressMs))!;
-    });
+    final content = frame.contentFor(style);
+    return _MeasuredReelTextFrame(
+      frame: frame,
+      content: content,
+      run: _measuredRunFor(content, layout),
+    );
+  }
+
+  bool _canReplaceWithoutRoll(_ReelTextFrame targetFrame,
+      {required bool force}) {
+    return !force &&
+        _displayedText == targetFrame.text &&
+        _sameWidgetAnchorSignature(
+          _displayedFrame.richText,
+          targetFrame.richText,
+        );
   }
 }
 

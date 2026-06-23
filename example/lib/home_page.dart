@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:reel_text/reel_text.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'studio.dart';
 
@@ -1789,7 +1788,6 @@ class _InstallBlockState extends State<_InstallBlock> {
       'npx skills add KickNext/reel_text\n--skill reel-text --agent universal --yes';
   static const _controlHeight = 48.0;
   static const _skillControlHeight = 60.0;
-  static final _skillsUri = Uri.parse('https://github.com/flutter/skills');
 
   late final ReelTextController _packageLabel;
   late final ReelTextController _skillLabel;
@@ -1806,10 +1804,6 @@ class _InstallBlockState extends State<_InstallBlock> {
     _packageLabel.dispose();
     _skillLabel.dispose();
     super.dispose();
-  }
-
-  void _openSkills() {
-    unawaited(launchUrl(_skillsUri));
   }
 
   void _copy(String command, ReelTextController label) {
@@ -1839,8 +1833,8 @@ class _InstallBlockState extends State<_InstallBlock> {
     required Key commandKey,
     required Key buttonKey,
     required Key labelSlotKey,
+    Key? commandTextKey,
     double controlHeight = _controlHeight,
-    bool linkSkills = false,
   }) {
     final label = SizedBox(
       width: 62,
@@ -1868,7 +1862,7 @@ class _InstallBlockState extends State<_InstallBlock> {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: _CommandText(text: commandText, linkSkills: linkSkills),
+            child: _CommandText(text: commandText, textKey: commandTextKey),
           ),
         ),
       ),
@@ -1877,20 +1871,7 @@ class _InstallBlockState extends State<_InstallBlock> {
     final command = SizedBox(
       key: commandKey,
       height: controlHeight,
-      child: linkSkills
-          ? Semantics(
-              button: true,
-              label: 'Open skills CLI documentation',
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _openSkills,
-                  child: commandChild,
-                ),
-              ),
-            )
-          : commandChild,
+      child: commandChild,
     );
 
     final copyButton = SizedBox(
@@ -1993,8 +1974,8 @@ class _InstallBlockState extends State<_InstallBlock> {
             commandKey: const ValueKey('install_skill_command_block'),
             buttonKey: const ValueKey('install_skill_copy_button'),
             labelSlotKey: const ValueKey('install_skill_copy_label_slot'),
+            commandTextKey: const ValueKey('install_skill_command_text'),
             controlHeight: _skillControlHeight,
-            linkSkills: true,
           ),
         ],
       ),
@@ -2003,10 +1984,10 @@ class _InstallBlockState extends State<_InstallBlock> {
 }
 
 class _CommandText extends StatelessWidget {
-  const _CommandText({required this.text, required this.linkSkills});
+  const _CommandText({required this.text, this.textKey});
 
   final String text;
-  final bool linkSkills;
+  final Key? textKey;
 
   @override
   Widget build(BuildContext context) {
@@ -2015,30 +1996,6 @@ class _CommandText extends StatelessWidget {
       color: Studio.text.withValues(alpha: 0.9),
       weight: FontWeight.w600,
     );
-    final skillsIndex = text.indexOf('skills');
-    if (!linkSkills || skillsIndex < 0) {
-      return Text(text, style: baseStyle);
-    }
-
-    final linkColor = Studio.info;
-    final linkStyle = baseStyle.copyWith(
-      color: linkColor,
-      fontWeight: FontWeight.w800,
-      decoration: TextDecoration.underline,
-      decorationColor: linkColor,
-      decorationThickness: 2.4,
-    );
-
-    return RichText(
-      key: const ValueKey('install_skill_command_text'),
-      text: TextSpan(
-        style: baseStyle,
-        children: [
-          TextSpan(text: text.substring(0, skillsIndex)),
-          TextSpan(text: 'skills', style: linkStyle),
-          TextSpan(text: text.substring(skillsIndex + 'skills'.length)),
-        ],
-      ),
-    );
+    return Text(key: textKey, text, style: baseStyle);
   }
 }

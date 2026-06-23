@@ -2,228 +2,347 @@ part of 'reel_text.dart';
 
 class _RollPlan {
   const _RollPlan({
-    required this.fromText,
-    required this.toText,
     required this.slots,
     required this.totalDuration,
   });
 
-  final String fromText;
-  final String toText;
   final List<_SlotPlan> slots;
   final Duration totalDuration;
 
   bool get hasMotion => slots.any((slot) => slot.changed);
 
   static _RollPlan create({
-    required String fromText,
-    required String toText,
+    required _MeasuredReelTextRun from,
+    required _MeasuredReelTextRun to,
     required ReelTextOptions options,
-    List<int>? fromVisualOrder,
-    List<int>? toVisualOrder,
     bool alignVisualOrderFromEnd = false,
   }) {
-    final fromChars = fromText.characters.toList();
-    final toChars = toText.characters.toList();
-    final fromOrder =
-        fromVisualOrder ?? [for (var i = 0; i < fromChars.length; i++) i];
-    final toOrder =
-        toVisualOrder ?? [for (var i = 0; i < toChars.length; i++) i];
-    final maxLen = math.max(fromOrder.length, toOrder.length);
-    var maxEndMs = 1;
-    // The stagger cascade runs across *changed* slots only, so a diff that
-    // touches just the tail (counters, ellipsis dots) starts instantly instead
-    // of inheriting dead delay from untouched leading glyphs.
-    var changeOrder = 0;
-    final slots = <_SlotPlan>[];
+    final fromOrder = from.visualOrder;
+    final toOrder = to.visualOrder;
+    final state = _SlotBuildState(
+      totalSlots: math.max(fromOrder.length, toOrder.length),
+    );
+    final chunks = <_PlanChunk>[];
+    final anchors = _matchedWidgetAnchors(from, to);
+    var fromStart = 0;
+    var toStart = 0;
 
-    for (var i = 0; i < maxLen; i++) {
-      final fromOrderIndex =
-          alignVisualOrderFromEnd ? i - (maxLen - fromOrder.length) : i;
-      final toOrderIndex =
-          alignVisualOrderFromEnd ? i - (maxLen - toOrder.length) : i;
-      final fromIndex = fromOrderIndex >= 0 && fromOrderIndex < fromOrder.length
-          ? fromOrder[fromOrderIndex]
-          : -1;
-      final toIndex = toOrderIndex >= 0 && toOrderIndex < toOrder.length
-          ? toOrder[toOrderIndex]
-          : -1;
-      final from = fromIndex >= 0 ? fromChars[fromIndex] : '';
-      final to = toIndex >= 0 ? toChars[toIndex] : '';
-      final unchanged = from == to && (options.skipUnchanged || from.isEmpty);
-      final isTail = to.isEmpty;
-      final durationMs = math.max(
-        1,
-        (options.duration.inMilliseconds *
-                (isTail ? 0.75 : 1.0) *
-                (1 + options.bounce * 0.45 * _wobble(i, 1)))
-            .round(),
-      );
-      // Removed tail slots cascade faster so shrinking feels like one motion.
-      final staggerIndex = isTail ? changeOrder * 0.5 : changeOrder.toDouble();
-      final baseMs = unchanged
-          ? 0
-          : math.max(
-              0,
-              (staggerIndex *
-                      options.stagger.inMilliseconds *
-                      (1 + options.bounce * 0.25 * _wobble(i, 2)))
-                  .round(),
-            );
-      // An incoming glyph only waits for exitOffset when it has to chase an
-      // outgoing one; an empty slot fills immediately.
-      final exitOffsetMs = from.isEmpty ? 0 : options.exitOffset.inMilliseconds;
-      final color = options.colorBuilder?.call(i, maxLen) ?? options.color;
-      final endMs = baseMs +
-          exitOffsetMs +
-          durationMs +
-          (color == null ? 0 : options.colorFade.inMilliseconds);
-      if (!unchanged) {
-        changeOrder++;
-        maxEndMs = math.max(maxEndMs, endMs + 80);
+    for (final anchor in anchors) {
+      chunks.add(_PlanSegmentChunk(
+        order: chunks.length,
+        fromStart: fromStart,
+        fromEnd: anchor.fromIndex,
+        toStart: toStart,
+        toEnd: anchor.toIndex,
+      ));
+      chunks.add(_PlanAnchorChunk(
+        order: chunks.length,
+        fromIndex: anchor.fromIndex,
+        toIndex: anchor.toIndex,
+      ));
+      fromStart = anchor.fromIndex + 1;
+      toStart = anchor.toIndex + 1;
+    }
+
+    chunks.add(_PlanSegmentChunk(
+      order: chunks.length,
+      fromStart: fromStart,
+      fromEnd: from.length,
+      toStart: toStart,
+      toEnd: to.length,
+    ));
+
+    _sortPlanChunks(chunks, fromOrder, toOrder);
+
+    for (final chunk in chunks) {
+      if (chunk is _PlanAnchorChunk) {
+        _appendSlot(
+          state: state,
+          options: options,
+          from: from.endpointAt(chunk.fromIndex),
+          to: to.endpointAt(chunk.toIndex),
+          forceUnchanged: true,
+        );
+        continue;
       }
-      slots.add(
-        _SlotPlan(
-          index: i,
-          fromIndex: fromIndex,
-          toIndex: toIndex,
-          from: from,
-          to: to,
-          changed: !unchanged,
-          baseMs: baseMs,
-          durationMs: durationMs,
-          exitOffsetMs: exitOffsetMs,
-          colorFadeMs: options.colorFade.inMilliseconds,
-          direction: options.direction,
-          curve: options.curve,
-          color: color,
-          tiltRadians: options.bounce * 5 * math.pi / 180 * _wobble(i, 3),
-          // How much of the curve's overshoot is rendered: bounce deepens the
-          // settle bounce, bounce 0 keeps a whisper of it.
-          overshoot: 0.6 + options.bounce * 0.7,
-        ),
+      final segment = chunk as _PlanSegmentChunk;
+
+      _appendPlanSegment(
+        state: state,
+        options: options,
+        from: from,
+        to: to,
+        fromVisualOrder: fromOrder,
+        toVisualOrder: toOrder,
+        alignVisualOrderFromEnd: alignVisualOrderFromEnd,
+        fromStart: segment.fromStart,
+        fromEnd: segment.fromEnd,
+        toStart: segment.toStart,
+        toEnd: segment.toEnd,
       );
     }
 
     return _RollPlan(
-      fromText: fromText,
-      toText: toText,
-      slots: slots,
-      totalDuration: Duration(milliseconds: maxEndMs),
+      slots: state.slots,
+      totalDuration: Duration(milliseconds: state.maxEndMs),
     );
   }
 }
 
-class _SlotPlan {
-  const _SlotPlan({
-    required this.index,
-    required int fromIndex,
-    required int toIndex,
-    required this.from,
-    required this.to,
-    required this.changed,
-    required this.baseMs,
-    required this.durationMs,
-    required this.exitOffsetMs,
-    required this.colorFadeMs,
-    required this.direction,
-    required this.curve,
-    required this.color,
-    required this.tiltRadians,
-    required this.overshoot,
-  })  : _fromIndex = fromIndex,
-        _toIndex = toIndex;
-
-  final int index;
-  // Nullable only for hot reload: slots created before these fields existed
-  // should keep rendering by falling back to the original logical index.
-  final int? _fromIndex;
-  final int? _toIndex;
-  final String from;
-  final String to;
-  final bool changed;
-  final int baseMs;
-  final int durationMs;
-  final int exitOffsetMs;
-  final int colorFadeMs;
-  final ReelTextDirection direction;
-  final Curve curve;
-  final Color? color;
-  final double tiltRadians;
-  final double overshoot;
-
-  int get fromIndex => _fromIndex ?? index;
-
-  int get toIndex => _toIndex ?? index;
-
-  double outT(double nowMs) => _curved(nowMs, baseMs, durationMs);
-
-  double outOpacity(double nowMs) {
-    final t = outT(nowMs);
-    return 1 - _smoothstep((t - 0.78) / 0.22);
-  }
-
-  double inT(double nowMs) => _curved(nowMs, baseMs + exitOffsetMs, durationMs);
-
-  double widthT(double nowMs) {
-    if (to.isEmpty) {
-      return _linear(
-        nowMs,
-        baseMs + (durationMs * 0.55).round(),
-        math.max(140, (durationMs * 0.6).round()),
-      );
-    }
-    if (from.isEmpty) {
-      return _linear(nowMs, baseMs, math.max(140, (durationMs * 0.45).round()));
-    }
-    return _linear(nowMs, baseMs, durationMs);
-  }
-
-  double colorT(double nowMs) {
-    if (color == null || colorFadeMs <= 0) {
-      return 1;
-    }
-    return _linear(nowMs, baseMs + exitOffsetMs + durationMs, colorFadeMs);
-  }
-
-  double outY(double nowMs, double height) {
-    final sign = direction == ReelTextDirection.down ? 1.0 : -1.0;
-    return sign * height * outT(nowMs);
-  }
-
-  double inY(double nowMs, double height) {
-    final sign = direction == ReelTextDirection.down ? -1.0 : 1.0;
-    return sign * height * (1 - inT(nowMs));
-  }
-
-  double _curved(double nowMs, int startMs, int spanMs) {
-    final value = curve.transform(_linear(nowMs, startMs, spanMs));
-    // Let springy curves overshoot past the resting line instead of clamping
-    // them flat — this is what makes the glyph visibly settle with a bounce.
-    // The depth is scaled by [overshoot] (driven by ReelTextOptions.bounce).
-    if (value > 1) {
-      return 1 + (value - 1) * overshoot;
-    }
-    if (value < 0) {
-      return value * overshoot;
-    }
-    return value;
+void _appendPlanSegment({
+  required _SlotBuildState state,
+  required ReelTextOptions options,
+  required _MeasuredReelTextRun from,
+  required _MeasuredReelTextRun to,
+  required List<int> fromVisualOrder,
+  required List<int> toVisualOrder,
+  required bool alignVisualOrderFromEnd,
+  required int fromStart,
+  required int fromEnd,
+  required int toStart,
+  required int toEnd,
+}) {
+  final fromOrder = _visualOrderInRange(
+    fromVisualOrder,
+    start: fromStart,
+    end: fromEnd,
+  );
+  final toOrder = _visualOrderInRange(
+    toVisualOrder,
+    start: toStart,
+    end: toEnd,
+  );
+  final maxLen = math.max(fromOrder.length, toOrder.length);
+  for (var i = 0; i < maxLen; i++) {
+    final fromOrderIndex =
+        alignVisualOrderFromEnd ? i - (maxLen - fromOrder.length) : i;
+    final toOrderIndex =
+        alignVisualOrderFromEnd ? i - (maxLen - toOrder.length) : i;
+    final fromIndex = fromOrderIndex >= 0 && fromOrderIndex < fromOrder.length
+        ? fromOrder[fromOrderIndex]
+        : -1;
+    final toIndex = toOrderIndex >= 0 && toOrderIndex < toOrder.length
+        ? toOrder[toOrderIndex]
+        : -1;
+    _appendSlot(
+      state: state,
+      options: options,
+      from: from.endpointAt(fromIndex),
+      to: to.endpointAt(toIndex),
+    );
   }
 }
 
-double _linear(double nowMs, int startMs, int spanMs) {
-  if (spanMs <= 0) {
-    return nowMs >= startMs ? 1 : 0;
+sealed class _PlanChunk {
+  const _PlanChunk({required this.order});
+
+  final int order;
+}
+
+class _PlanSegmentChunk extends _PlanChunk {
+  const _PlanSegmentChunk({
+    required super.order,
+    required this.fromStart,
+    required this.fromEnd,
+    required this.toStart,
+    required this.toEnd,
+  });
+
+  final int fromStart;
+  final int fromEnd;
+  final int toStart;
+  final int toEnd;
+}
+
+class _PlanAnchorChunk extends _PlanChunk {
+  const _PlanAnchorChunk({
+    required super.order,
+    required this.fromIndex,
+    required this.toIndex,
+  });
+
+  final int fromIndex;
+  final int toIndex;
+}
+
+void _sortPlanChunks(
+  List<_PlanChunk> chunks,
+  List<int> fromVisualOrder,
+  List<int> toVisualOrder,
+) {
+  final fromRanks = _visualRanks(fromVisualOrder);
+  final toRanks = _visualRanks(toVisualOrder);
+
+  chunks.sort((a, b) {
+    final byRank = _chunkVisualRank(a, fromRanks, toRanks).compareTo(
+      _chunkVisualRank(b, fromRanks, toRanks),
+    );
+    if (byRank != 0) {
+      return byRank;
+    }
+    return a.order.compareTo(b.order);
+  });
+}
+
+int _chunkVisualRank(
+  _PlanChunk chunk,
+  Map<int, int> fromRanks,
+  Map<int, int> toRanks,
+) {
+  if (chunk is _PlanAnchorChunk) {
+    return fromRanks[chunk.fromIndex] ??
+        toRanks[chunk.toIndex] ??
+        chunk.fromIndex;
   }
-  return ((nowMs - startMs) / spanMs).clamp(0.0, 1.0);
+  final segment = chunk as _PlanSegmentChunk;
+
+  final fromRank = _minRankInRange(
+    fromRanks,
+    start: segment.fromStart,
+    end: segment.fromEnd,
+  );
+  if (fromRank != null) {
+    return fromRank;
+  }
+  return _minRankInRange(
+        toRanks,
+        start: segment.toStart,
+        end: segment.toEnd,
+      ) ??
+      chunk.order;
 }
 
-double _smoothstep(double value) {
-  final t = value.clamp(0.0, 1.0);
-  return t * t * (3 - 2 * t);
+List<int> _visualOrderInRange(
+  List<int> visualOrder, {
+  required int start,
+  required int end,
+}) {
+  if (start >= end) {
+    return const [];
+  }
+  return [
+    for (final index in visualOrder)
+      if (index >= start && index < end) index,
+  ];
 }
 
-double _wobble(int i, int salt) {
-  final n = math.sin((i + 1) * 12.9898 + salt * 78.233) * 43758.5453;
-  return (n - n.floor()) * 2 - 1;
+Map<int, int> _visualRanks(List<int> visualOrder) {
+  return {
+    for (var i = 0; i < visualOrder.length; i++) visualOrder[i]: i,
+  };
+}
+
+int? _minRankInRange(
+  Map<int, int> ranks, {
+  required int start,
+  required int end,
+}) {
+  int? minRank;
+  for (var i = start; i < end; i++) {
+    final rank = ranks[i];
+    if (rank == null) {
+      continue;
+    }
+    minRank = minRank == null ? rank : math.min(minRank, rank);
+  }
+  return minRank;
+}
+
+class _MatchedWidgetAnchor {
+  const _MatchedWidgetAnchor({
+    required this.fromIndex,
+    required this.toIndex,
+  });
+
+  final int fromIndex;
+  final int toIndex;
+}
+
+List<_MatchedWidgetAnchor> _matchedWidgetAnchors(
+  _MeasuredReelTextRun from,
+  _MeasuredReelTextRun to,
+) {
+  final candidates = [
+    ..._keyedWidgetAnchors(from.content, to.content),
+    ..._unkeyedWidgetAnchors(from.content, to.content),
+  ]..sort(_compareWidgetAnchors);
+
+  final anchors = <_MatchedWidgetAnchor>[];
+  var lastToIndex = -1;
+  for (final candidate in candidates) {
+    if (candidate.toIndex <= lastToIndex) {
+      continue;
+    }
+    anchors.add(candidate);
+    lastToIndex = candidate.toIndex;
+  }
+  return anchors;
+}
+
+List<_MatchedWidgetAnchor> _keyedWidgetAnchors(
+  _ReelTextContent from,
+  _ReelTextContent to,
+) {
+  final toByKey = <Key, List<_ReelTextWidgetToken>>{};
+  for (final widget in to.widgetTokens) {
+    final key = _widgetAnchorKey(widget.span);
+    if (key == null) {
+      continue;
+    }
+    (toByKey[key] ??= []).add(widget);
+  }
+
+  final anchors = <_MatchedWidgetAnchor>[];
+  for (final widget in from.widgetTokens) {
+    final key = _widgetAnchorKey(widget.span);
+    if (key == null) {
+      continue;
+    }
+    final target = _takeFirst(toByKey[key]);
+    if (target == null) {
+      continue;
+    }
+    anchors.add(_MatchedWidgetAnchor(
+      fromIndex: widget.index,
+      toIndex: target.index,
+    ));
+  }
+  return anchors;
+}
+
+List<_MatchedWidgetAnchor> _unkeyedWidgetAnchors(
+  _ReelTextContent from,
+  _ReelTextContent to,
+) {
+  final fromWidgets = [
+    for (final widget in from.widgetTokens)
+      if (_widgetAnchorKey(widget.span) == null) widget,
+  ];
+  final toWidgets = [
+    for (final widget in to.widgetTokens)
+      if (_widgetAnchorKey(widget.span) == null) widget,
+  ];
+  final count = math.min(fromWidgets.length, toWidgets.length);
+  return [
+    for (var i = 0; i < count; i++)
+      _MatchedWidgetAnchor(
+        fromIndex: fromWidgets[i].index,
+        toIndex: toWidgets[i].index,
+      ),
+  ];
+}
+
+_ReelTextWidgetToken? _takeFirst(List<_ReelTextWidgetToken>? widgets) {
+  if (widgets == null || widgets.isEmpty) {
+    return null;
+  }
+  return widgets.removeAt(0);
+}
+
+int _compareWidgetAnchors(_MatchedWidgetAnchor a, _MatchedWidgetAnchor b) {
+  final byFrom = a.fromIndex.compareTo(b.fromIndex);
+  if (byFrom != 0) {
+    return byFrom;
+  }
+  return a.toIndex.compareTo(b.toIndex);
 }

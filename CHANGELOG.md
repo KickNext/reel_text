@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Added `WidgetSpan` support to `ReelText.rich`: inline widgets now stay in the
+  reel row while neighboring text spans keep rolling.
+
 ## 0.2.1
 
 - Renamed the optional agent skill to the spec-compliant `reel-text`
@@ -7,8 +10,7 @@
 - Switched skill install docs and the example copy command to the
   `npx skills add ... --agent universal` flow used by the official Flutter and
   Dart skill repositories.
-- Restored full-height tap targets for the example install copy buttons and
-  skill command link.
+- Restored full-height tap targets for the example install copy buttons.
 
 ## 0.2.0
 
