@@ -86,6 +86,7 @@ class _WidgetSpanFace extends StatelessWidget {
       heightFactor: 1,
       alignment: _placeholderAlignment(span.alignment),
       child: _WidgetSpanSizeObserver(
+        identity: span,
         onSizeChanged: (size) =>
             layout.onWidgetSpanSizeChanged(index, span, size),
         child: span.child,
@@ -96,15 +97,17 @@ class _WidgetSpanFace extends StatelessWidget {
 
 class _WidgetSpanSizeObserver extends SingleChildRenderObjectWidget {
   const _WidgetSpanSizeObserver({
+    required this.identity,
     required this.onSizeChanged,
     required super.child,
   });
 
+  final WidgetSpan identity;
   final ValueChanged<Size> onSizeChanged;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return _RenderWidgetSpanSizeObserver(onSizeChanged);
+    return _RenderWidgetSpanSizeObserver(identity, onSizeChanged);
   }
 
   @override
@@ -112,15 +115,29 @@ class _WidgetSpanSizeObserver extends SingleChildRenderObjectWidget {
     BuildContext context,
     covariant _RenderWidgetSpanSizeObserver renderObject,
   ) {
-    renderObject.onSizeChanged = onSizeChanged;
+    renderObject
+      ..identity = identity
+      ..onSizeChanged = onSizeChanged;
   }
 }
 
 class _RenderWidgetSpanSizeObserver extends RenderProxyBox {
-  _RenderWidgetSpanSizeObserver(this.onSizeChanged);
+  _RenderWidgetSpanSizeObserver(
+    WidgetSpan identity,
+    this.onSizeChanged,
+  ) : _identity = identity;
 
+  WidgetSpan _identity;
   ValueChanged<Size> onSizeChanged;
   Size? _reportedSize;
+
+  set identity(WidgetSpan value) {
+    if (identical(_identity, value)) {
+      return;
+    }
+    _identity = value;
+    _reportedSize = null;
+  }
 
   @override
   void performLayout() {

@@ -23,6 +23,11 @@ bool _widgetSpansEquivalentForUnchanged(WidgetSpan from, WidgetSpan to) {
 
 Key? _widgetAnchorKey(WidgetSpan span) => _WidgetSpanIdentity.of(span).key;
 
+GlobalKey? _globalWidgetAnchorKey(WidgetSpan span) {
+  final key = _widgetAnchorKey(span);
+  return key is GlobalKey ? key : null;
+}
+
 bool _sameWidgetAnchorSignature(InlineSpan? a, InlineSpan? b) {
   final aKeys = _widgetAnchorSignature(a);
   final bKeys = _widgetAnchorSignature(b);

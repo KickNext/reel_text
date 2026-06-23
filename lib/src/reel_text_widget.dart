@@ -407,9 +407,6 @@ class _ReelTextState extends State<ReelText>
     if (!mounted) {
       return;
     }
-    if (size.isEmpty) {
-      return;
-    }
     if (_widgetSpanSizes.hasSize(index, span, size)) {
       return;
     }

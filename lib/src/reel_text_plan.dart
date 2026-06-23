@@ -124,13 +124,56 @@ void _appendPlanSegment({
     final toIndex = toOrderIndex >= 0 && toOrderIndex < toOrder.length
         ? toOrder[toOrderIndex]
         : -1;
+    var fromEndpoint = from.endpointAt(fromIndex);
+    final toEndpoint = to.endpointAt(toIndex);
+    if (_shouldSuppressMovingGlobalWidgetSource(
+      fromEndpoint: fromEndpoint,
+      toEndpoint: toEndpoint,
+      target: to.content,
+    )) {
+      fromEndpoint = null;
+    }
+    if (fromEndpoint == null && toEndpoint == null) {
+      continue;
+    }
     _appendSlot(
       state: state,
       options: options,
-      from: from.endpointAt(fromIndex),
-      to: to.endpointAt(toIndex),
+      from: fromEndpoint,
+      to: toEndpoint,
     );
   }
+}
+
+bool _shouldSuppressMovingGlobalWidgetSource({
+  required _SlotEndpoint? fromEndpoint,
+  required _SlotEndpoint? toEndpoint,
+  required _ReelTextContent target,
+}) {
+  final fromSpan = fromEndpoint?.token.widgetSpan;
+  if (fromSpan == null) {
+    return false;
+  }
+  final fromKey = _globalWidgetAnchorKey(fromSpan);
+  if (fromKey == null) {
+    return false;
+  }
+
+  final toSpan = toEndpoint?.token.widgetSpan;
+  if (toSpan != null && _globalWidgetAnchorKey(toSpan) == fromKey) {
+    return false;
+  }
+
+  return _containsGlobalWidgetKey(target, fromKey);
+}
+
+bool _containsGlobalWidgetKey(_ReelTextContent content, GlobalKey key) {
+  for (final widget in content.widgetTokens) {
+    if (_globalWidgetAnchorKey(widget.span) == key) {
+      return true;
+    }
+  }
+  return false;
 }
 
 sealed class _PlanChunk {
