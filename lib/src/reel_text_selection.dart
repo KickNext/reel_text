@@ -5,21 +5,24 @@ class _ReelTextSelection extends StatelessWidget {
     required this.content,
     required this.textAlign,
     required this.layout,
+    required this.excludeVisualSemantics,
     required this.child,
   });
 
   final _ReelTextContent content;
   final TextAlign textAlign;
   final _ReelTextLayoutContext layout;
+  final bool excludeVisualSemantics;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final textScaler =
         MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
-    final visual = ExcludeSemantics(
-      child: SelectionContainer.disabled(child: child),
-    );
+    final visualChild = SelectionContainer.disabled(child: child);
+    final visual = excludeVisualSemantics
+        ? ExcludeSemantics(child: visualChild)
+        : visualChild;
     final registrar = SelectionContainer.maybeOf(context);
     if (registrar == null) {
       return visual;

@@ -392,12 +392,27 @@ class _ReelTextState extends State<ReelText>
       child: child,
     );
 
+    final explicitSemanticsLabel = widget.semanticsLabel;
+    if (explicitSemanticsLabel != null) {
+      return Semantics(
+        label: explicitSemanticsLabel,
+        child: _ReelTextSelection(
+          content: visibleContent,
+          textAlign: effectiveTextAlign,
+          layout: layout,
+          excludeVisualSemantics: true,
+          child: child,
+        ),
+      );
+    }
+
     return Semantics(
-      label: widget.semanticsLabel ?? visibleSemanticsText,
+      label: visibleSemanticsText,
       child: _ReelTextSelection(
         content: visibleContent,
         textAlign: effectiveTextAlign,
         layout: layout,
+        excludeVisualSemantics: false,
         child: child,
       ),
     );

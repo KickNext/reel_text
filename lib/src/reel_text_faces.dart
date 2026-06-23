@@ -32,10 +32,12 @@ class _TextTokenFace extends StatelessWidget {
         child: SizedBox(
           width: paintWidth,
           height: height,
-          child: _TextTokenText(
-            text,
-            style: style,
-            layout: layout,
+          child: ExcludeSemantics(
+            child: _TextTokenText(
+              text,
+              style: style,
+              layout: layout,
+            ),
           ),
         ),
       ),

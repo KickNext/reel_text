@@ -2219,13 +2219,55 @@ void main() {
     expect(find.bySemanticsLabel(visibleText), findsNothing);
   });
 
+  testWidgets('rich text preserves WidgetSpan child semantics', (
+    tester,
+  ) async {
+    final span = TextSpan(
+      children: [
+        const TextSpan(text: 'ETA '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Semantics(
+            label: 'priority badge',
+            child: const SizedBox(width: 12, height: 12),
+          ),
+        ),
+        const TextSpan(text: ' ready'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.rich(span),
+      ),
+    );
+
+    expect(find.bySemanticsLabel(RegExp(r'\bETA\s+ready\b')), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(RegExp(r'\bpriority badge\b')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('explicit semanticsLabel overrides rich text semantics', (
     tester,
   ) async {
-    const span = TextSpan(text: 'ETA', semanticsLabel: 'estimated arrival');
+    final span = TextSpan(
+      children: [
+        const TextSpan(text: 'ETA', semanticsLabel: 'estimated arrival'),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Semantics(
+            label: 'priority badge',
+            child: const SizedBox(width: 12, height: 12),
+          ),
+        ),
+      ],
+    );
 
     await tester.pumpWidget(
-      const Directionality(
+      Directionality(
         textDirection: TextDirection.ltr,
         child: ReelText.rich(span, semanticsLabel: 'delivery estimate'),
       ),
@@ -2233,6 +2275,7 @@ void main() {
 
     expect(find.bySemanticsLabel('delivery estimate'), findsOneWidget);
     expect(find.bySemanticsLabel('estimated arrival'), findsNothing);
+    expect(find.bySemanticsLabel('priority badge'), findsNothing);
   });
 
   testWidgets('editing controller renders replacements inside EditableText', (
