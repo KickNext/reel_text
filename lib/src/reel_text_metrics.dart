@@ -25,10 +25,16 @@ class _WidgetSpanSizeRegistry {
 
   _WidgetSpanMetrics? metricsFor(int index, WidgetSpan span) {
     final entry = _entries[index];
-    if (entry == null || !identical(entry.span, span)) {
+    if (entry == null) {
       return null;
     }
-    return entry.metrics;
+    if (identical(entry.span, span)) {
+      return entry.metrics;
+    }
+    if (_widgetSpansEquivalentForUnchanged(entry.span, span)) {
+      return entry.metrics;
+    }
+    return null;
   }
 
   bool hasMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {

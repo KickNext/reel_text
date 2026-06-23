@@ -1855,6 +1855,8 @@ void main() {
     final initialSelectionRight = selectionRight();
 
     await tester.pumpWidget(frame());
+    expect(selectionRight(), closeTo(initialSelectionRight, 1.0));
+
     await tester.pump();
     await tester.pump();
 
