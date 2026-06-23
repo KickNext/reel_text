@@ -139,7 +139,9 @@ class _ReelTextState extends State<ReelText>
   _PendingRoll? _pending;
   Timer? _sequenceTimer;
   int _sequenceIndex = 0;
+  int _widgetSpanMetricsVersion = 0;
   final _widgetSpanSizes = _WidgetSpanSizeRegistry();
+  _SettledReelTextCache? _settledCache;
 
   String get _effectiveText =>
       widget.controller?.value ??
@@ -365,17 +367,22 @@ class _ReelTextState extends State<ReelText>
     final visibleFrame = _targetFrame ?? _displayedFrame;
     final visibleSemanticsText = visibleFrame.semanticsText;
     final roll = _roll;
-    final visibleContent =
-        roll?.to.content ?? _displayedFrame.contentFor(style);
+    final textScaler =
+        MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
+    late final _ReelTextContent visibleContent;
 
     Widget child;
     if (roll == null) {
-      child = _SettledReelText(
-        content: visibleContent,
-        key: const ValueKey('reel_text_settled'),
+      final settled = _settledReelTextFor(
+        frame: _displayedFrame,
+        style: style,
         layout: layout,
+        textScaler: textScaler,
       );
+      visibleContent = settled.measured.content;
+      child = settled.child;
     } else {
+      visibleContent = roll.to.content;
       child = _RollingReelText(
         plan: roll.plan,
         fromRun: roll.from.run,
@@ -431,6 +438,7 @@ class _ReelTextState extends State<ReelText>
     }
     setState(() {
       _widgetSpanSizes.setMetrics(index, span, metrics);
+      _widgetSpanMetricsVersion++;
       final targetFrame = _targetFrame;
       final roll = _roll;
       if (targetFrame != null && roll != null) {
@@ -458,6 +466,40 @@ class _ReelTextState extends State<ReelText>
       content: content,
       layout: layout,
     );
+  }
+
+  _SettledReelTextCache _settledReelTextFor({
+    required _ReelTextFrame frame,
+    required TextStyle style,
+    required _ReelTextLayoutContext layout,
+    required TextScaler textScaler,
+  }) {
+    final key = _SettledReelTextCacheKey(
+      frame: frame,
+      style: style,
+      textDirection: layout.textDirection,
+      locale: layout.locale,
+      strutStyle: layout.strutStyle,
+      textScaler: textScaler,
+      widgetSpanMetricsVersion: _widgetSpanMetricsVersion,
+    );
+    final cached = _settledCache;
+    if (cached != null && cached.key == key) {
+      return cached;
+    }
+
+    final measured = _measureFrame(frame, style, layout);
+    final next = _SettledReelTextCache(
+      key: key,
+      measured: measured,
+      child: _SettledReelText(
+        run: measured.run,
+        key: const ValueKey('reel_text_settled'),
+        layout: layout,
+      ),
+    );
+    _settledCache = next;
+    return next;
   }
 
   _ActiveRoll _createRoll(_ReelTextFrame targetFrame, ReelTextOptions options) {

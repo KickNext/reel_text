@@ -53,14 +53,16 @@ class _RollingTokenSlot extends StatelessWidget {
     required this.slot,
     required this.fromRun,
     required this.toRun,
-    required this.progressMs,
+    required this.animation,
+    required this.totalDurationMs,
     required this.layout,
   });
 
   final _SlotPlan slot;
   final _MeasuredReelTextRun fromRun;
   final _MeasuredReelTextRun toRun;
-  final double progressMs;
+  final Animation<double> animation;
+  final int totalDurationMs;
   final _ReelTextLayoutContext layout;
 
   @override
@@ -83,7 +85,13 @@ class _RollingTokenSlot extends StatelessWidget {
     if (data.hasWidgetEndpoint) {
       return _buildAtomicSwap(data);
     }
-    return _buildRollingText(context, data);
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final progressMs = animation.value * totalDurationMs;
+        return _buildRollingText(context, data, progressMs);
+      },
+    );
   }
 
   Widget _buildUnchanged(_TokenSlotRenderData data) {
@@ -148,7 +156,11 @@ class _RollingTokenSlot extends StatelessWidget {
     );
   }
 
-  Widget _buildRollingText(BuildContext context, _TokenSlotRenderData data) {
+  Widget _buildRollingText(
+    BuildContext context,
+    _TokenSlotRenderData data,
+    double progressMs,
+  ) {
     final width = ui.lerpDouble(
       data.metrics.fromWidth,
       data.metrics.toWidth,

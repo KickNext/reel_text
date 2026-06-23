@@ -3,20 +3,15 @@ part of 'reel_text.dart';
 class _SettledReelText extends StatelessWidget {
   const _SettledReelText({
     super.key,
-    required this.content,
+    required this.run,
     required this.layout,
   });
 
-  final _ReelTextContent content;
+  final _MeasuredReelTextRun run;
   final _ReelTextLayoutContext layout;
 
   @override
   Widget build(BuildContext context) {
-    final run = _MeasuredReelTextRun.of(
-      context: context,
-      content: content,
-      layout: layout,
-    );
     final runMetrics = run.metrics;
     final tokenRow = Row(
       key: const ValueKey('reel_text_settled_glyphs'),
@@ -158,33 +153,35 @@ class _RollingReelText extends StatelessWidget {
     final anchorShrinkingRight =
         _alignsToRight(textAlign, layout.textDirection) &&
             toRun.width < fromRun.width;
+    final rollingRow = Row(
+      key: const ValueKey('reel_text_rolling'),
+      mainAxisSize: MainAxisSize.min,
+      textDirection: TextDirection.ltr,
+      children: [
+        for (final slot in plan.slots)
+          _RollingTokenSlot(
+            slot: slot,
+            fromRun: fromRun,
+            toRun: toRun,
+            animation: animation,
+            totalDurationMs: plan.totalDuration.inMilliseconds,
+            layout: layout,
+          ),
+      ],
+    );
     return AnimatedBuilder(
       animation: animation,
-      builder: (context, _) {
+      child: rollingRow,
+      builder: (context, child) {
         final progressMs = animation.value * plan.totalDuration.inMilliseconds;
         final width = _rollingWidth(progressMs);
-        final rollingRow = Row(
-          key: const ValueKey('reel_text_rolling'),
-          mainAxisSize: MainAxisSize.min,
-          textDirection: TextDirection.ltr,
-          children: [
-            for (final slot in plan.slots)
-              _RollingTokenSlot(
-                slot: slot,
-                fromRun: fromRun,
-                toRun: toRun,
-                progressMs: progressMs,
-                layout: layout,
-              ),
-          ],
-        );
         if (hasWidgetSlots) {
           return _SettledTokenRowViewport(
             height: height,
             alignment: anchorShrinkingRight
                 ? layout.inlineStartAlignment
                 : _alignmentForTextAlign(textAlign, layout.textDirection),
-            child: rollingRow,
+            child: child!,
           );
         }
         final viewportWidth = anchorShrinkingRight ? toRun.width : width;
@@ -199,7 +196,7 @@ class _RollingReelText extends StatelessWidget {
             maxWidth: double.infinity,
             minHeight: height,
             maxHeight: double.infinity,
-            child: rollingRow,
+            child: child!,
           ),
         );
       },

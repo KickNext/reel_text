@@ -165,6 +165,47 @@ void main() {
     );
   });
 
+  testWidgets('settled glyph subtree is reused across parent rebuilds', (
+    tester,
+  ) async {
+    var revision = 0;
+    late StateSetter rebuildParent;
+    final textScaler = _CountingTextScaler();
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            rebuildParent = setState;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('revision $revision'),
+                MediaQuery(
+                  data: MediaQueryData(textScaler: textScaler),
+                  child: ReelText(
+                    'Stable',
+                    style: _textStyle(18),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    final initialScaleCalls = textScaler.calls;
+    expect(initialScaleCalls, greaterThan(0));
+    rebuildParent(() {
+      revision++;
+    });
+    await tester.pump();
+
+    expect(textScaler.calls, initialScaleCalls);
+  });
+
   testWidgets('settled locale layout matches Text size exactly', (
     tester,
   ) async {
@@ -779,6 +820,38 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(tester.getSize(find.byKey(reelKey)), targetSize);
+  });
+
+  testWidgets('rolling uses per-slot builders only for changed text slots', (
+    tester,
+  ) async {
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 120),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    TextSpan spanFor(String middle) {
+      return TextSpan(
+        children: [
+          TextSpan(text: 'a', style: _textStyle(11)),
+          TextSpan(text: middle, style: _textStyle(17)),
+          TextSpan(text: 'c', style: _textStyle(13)),
+        ],
+      );
+    }
+
+    Widget frame(String middle) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.rich(spanFor(middle), options: options),
+      );
+    }
+
+    await tester.pumpWidget(frame('b'));
+    await tester.pumpWidget(frame('x'));
+
+    expect(find.byType(AnimatedBuilder), findsNWidgets(2));
   });
 
   testWidgets('inserted glyph widths expand during a roll', (tester) async {
@@ -3723,4 +3796,23 @@ class _GlyphPosition {
   final String text;
   final double left;
   final int sourceOrder;
+}
+
+TextStyle _textStyle(double fontSize) {
+  return TextStyle(fontSize: fontSize);
+}
+
+class _CountingTextScaler extends TextScaler {
+  final scaledFontSizes = <double>[];
+
+  int get calls => scaledFontSizes.length;
+
+  @override
+  double scale(double fontSize) {
+    scaledFontSizes.add(fontSize);
+    return fontSize;
+  }
+
+  @override
+  double get textScaleFactor => 1;
 }
