@@ -2,6 +2,13 @@
 
 - Added `WidgetSpan` support to `ReelText.rich`: inline widgets now stay in the
   reel row while neighboring text spans keep rolling.
+- Reworked the internal roll planner around a shared measured token pipeline for
+  text glyphs and widget placeholders.
+- Added regression coverage for RTL and mixed-bidi widget spans, keyed widget
+  reorders, interrupted rich updates, selection sizing, and late placeholder
+  measurement.
+- Split the example recipe shell and preview widgets into smaller files.
+- No public API changes.
 
 ## 0.2.1
 
