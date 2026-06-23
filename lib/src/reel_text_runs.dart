@@ -28,6 +28,7 @@ class _SettledReelText extends StatelessWidget {
             run.content.tokens[index],
             width: runMetrics.widthAt(index),
             height: runMetrics.height,
+            baselineFor: runMetrics.baselineFor,
             layout: layout,
             index: index,
           ),

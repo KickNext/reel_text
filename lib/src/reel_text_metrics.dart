@@ -5,16 +5,17 @@ class _ReelTextLayoutContext {
     required this.textDirection,
     required this.locale,
     required this.strutStyle,
-    required this.widgetSpanSizeFor,
-    required this.onWidgetSpanSizeChanged,
+    required this.widgetSpanMetricsFor,
+    required this.onWidgetSpanMetricsChanged,
   });
 
   final TextDirection textDirection;
   final Locale? locale;
   final StrutStyle? strutStyle;
-  final Size? Function(int index, WidgetSpan span) widgetSpanSizeFor;
-  final void Function(int index, WidgetSpan span, Size size)
-      onWidgetSpanSizeChanged;
+  final _WidgetSpanMetrics? Function(int index, WidgetSpan span)
+      widgetSpanMetricsFor;
+  final void Function(int index, WidgetSpan span, _WidgetSpanMetrics metrics)
+      onWidgetSpanMetricsChanged;
 
   Alignment get inlineStartAlignment => _inlineStartAlignment(textDirection);
 }
@@ -22,28 +23,49 @@ class _ReelTextLayoutContext {
 class _WidgetSpanSizeRegistry {
   final _entries = <int, _WidgetSpanSizeEntry>{};
 
-  Size? sizeFor(int index, WidgetSpan span) {
+  _WidgetSpanMetrics? metricsFor(int index, WidgetSpan span) {
     final entry = _entries[index];
     if (entry == null || !identical(entry.span, span)) {
       return null;
     }
-    return entry.size;
+    return entry.metrics;
   }
 
-  bool hasSize(int index, WidgetSpan span, Size size) {
-    return sizeFor(index, span) == size;
+  bool hasMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {
+    return metricsFor(index, span) == metrics;
   }
 
-  void setSize(int index, WidgetSpan span, Size size) {
-    _entries[index] = _WidgetSpanSizeEntry(span, size);
+  void setMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {
+    _entries[index] = _WidgetSpanSizeEntry(span, metrics);
   }
 }
 
 class _WidgetSpanSizeEntry {
-  const _WidgetSpanSizeEntry(this.span, this.size);
+  const _WidgetSpanSizeEntry(this.span, this.metrics);
 
   final WidgetSpan span;
+  final _WidgetSpanMetrics metrics;
+}
+
+@immutable
+class _WidgetSpanMetrics {
+  const _WidgetSpanMetrics({
+    required this.size,
+    required this.baselineOffset,
+  });
+
   final Size size;
+  final double? baselineOffset;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _WidgetSpanMetrics &&
+        other.size == size &&
+        other.baselineOffset == baselineOffset;
+  }
+
+  @override
+  int get hashCode => Object.hash(size, baselineOffset);
 }
 
 class _MeasuredReelTextRun {
@@ -115,18 +137,29 @@ class _TextRunMetrics {
     required this.visualOrder,
     required this.width,
     required this.height,
+    required this.alphabeticBaseline,
+    required this.ideographicBaseline,
   });
 
   final List<double> widths;
   final List<int> visualOrder;
   final double width;
   final double height;
+  final double alphabeticBaseline;
+  final double ideographicBaseline;
 
   double widthAt(int index) {
     if (index < 0 || index >= widths.length) {
       return 0;
     }
     return widths[index];
+  }
+
+  double baselineFor(TextBaseline? baseline) {
+    return switch (baseline) {
+      TextBaseline.ideographic => ideographicBaseline,
+      TextBaseline.alphabetic || null => alphabeticBaseline,
+    };
   }
 
   static _TextRunMetrics of({
@@ -145,7 +178,7 @@ class _TextRunMetrics {
       maxLines: 1,
     );
     painter.setPlaceholderDimensions(
-      _placeholderDimensionsFor(content, layout.widgetSpanSizeFor),
+      _placeholderDimensionsFor(content, layout.widgetSpanMetricsFor),
     );
     painter.layout();
 
@@ -196,6 +229,12 @@ class _TextRunMetrics {
       visualOrder: visualOrder,
       width: totalWidth,
       height: painter.size.height,
+      alphabeticBaseline: painter.computeDistanceToActualBaseline(
+        TextBaseline.alphabetic,
+      ),
+      ideographicBaseline: painter.computeDistanceToActualBaseline(
+        TextBaseline.ideographic,
+      ),
     );
   }
 
@@ -230,14 +269,15 @@ class _TextRunMetrics {
 
 List<PlaceholderDimensions>? _placeholderDimensionsFor(
   _ReelTextContent content,
-  Size? Function(int index, WidgetSpan span) widgetSpanSizeFor,
+  _WidgetSpanMetrics? Function(int index, WidgetSpan span) widgetSpanMetricsFor,
 ) {
   final dimensions = <PlaceholderDimensions>[];
   for (final widget in content.widgetTokens) {
     dimensions.add(
       _placeholderDimensionsForWidget(
         widget.span,
-        widgetSpanSizeFor(widget.index, widget.span) ?? Size.zero,
+        widgetSpanMetricsFor(widget.index, widget.span) ??
+            const _WidgetSpanMetrics(size: Size.zero, baselineOffset: null),
       ),
     );
   }
@@ -246,17 +286,26 @@ List<PlaceholderDimensions>? _placeholderDimensionsFor(
 
 PlaceholderDimensions _placeholderDimensionsForWidget(
   WidgetSpan span,
-  Size size,
+  _WidgetSpanMetrics metrics,
 ) {
+  final size = metrics.size;
   if (size == Size.zero) {
-    return PlaceholderDimensions.empty;
+    return PlaceholderDimensions(
+      size: Size.zero,
+      alignment: span.alignment,
+      baseline: span.baseline,
+      baselineOffset: span.alignment == ui.PlaceholderAlignment.baseline
+          ? metrics.baselineOffset ?? 0
+          : null,
+    );
   }
   return PlaceholderDimensions(
     size: size,
     alignment: span.alignment,
     baseline: span.baseline,
-    baselineOffset:
-        span.alignment == ui.PlaceholderAlignment.baseline ? size.height : null,
+    baselineOffset: span.alignment == ui.PlaceholderAlignment.baseline
+        ? metrics.baselineOffset ?? size.height
+        : null,
   );
 }
 

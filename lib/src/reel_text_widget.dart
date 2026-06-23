@@ -403,15 +403,19 @@ class _ReelTextState extends State<ReelText>
     );
   }
 
-  void _handleWidgetSpanSizeChanged(int index, WidgetSpan span, Size size) {
+  void _handleWidgetSpanMetricsChanged(
+    int index,
+    WidgetSpan span,
+    _WidgetSpanMetrics metrics,
+  ) {
     if (!mounted) {
       return;
     }
-    if (_widgetSpanSizes.hasSize(index, span, size)) {
+    if (_widgetSpanSizes.hasMetrics(index, span, metrics)) {
       return;
     }
     setState(() {
-      _widgetSpanSizes.setSize(index, span, size);
+      _widgetSpanSizes.setMetrics(index, span, metrics);
       final targetFrame = _targetFrame;
       final roll = _roll;
       if (targetFrame != null && roll != null) {
@@ -425,8 +429,8 @@ class _ReelTextState extends State<ReelText>
       textDirection: direction,
       locale: widget.locale,
       strutStyle: widget.strutStyle,
-      widgetSpanSizeFor: _widgetSpanSizes.sizeFor,
-      onWidgetSpanSizeChanged: _handleWidgetSpanSizeChanged,
+      widgetSpanMetricsFor: _widgetSpanSizes.metricsFor,
+      onWidgetSpanMetricsChanged: _handleWidgetSpanMetricsChanged,
     );
   }
 

@@ -5,6 +5,7 @@ class _SettledTokenSlot extends StatelessWidget {
     this.token, {
     required this.width,
     required this.height,
+    required this.baselineFor,
     required this.layout,
     required this.index,
   });
@@ -12,6 +13,7 @@ class _SettledTokenSlot extends StatelessWidget {
   final _ReelTextToken token;
   final double width;
   final double height;
+  final double Function(TextBaseline? baseline) baselineFor;
   final _ReelTextLayoutContext layout;
   final int index;
 
@@ -21,6 +23,8 @@ class _SettledTokenSlot extends StatelessWidget {
       return _WidgetSpanFace(
         token.widgetSpan!,
         index: index,
+        lineHeight: height,
+        lineBaseline: baselineFor(token.widgetSpan!.baseline),
         layout: layout,
       );
     }
@@ -86,6 +90,9 @@ class _RollingTokenSlot extends StatelessWidget {
       return _WidgetSpanFace(
         data.toToken!.widgetSpan!,
         index: data.toEndpoint!.index,
+        lineHeight: data.metrics.height,
+        lineBaseline:
+            toRun.metrics.baselineFor(data.toToken!.widgetSpan!.baseline),
         layout: layout,
       );
     }
@@ -113,9 +120,14 @@ class _RollingTokenSlot extends StatelessWidget {
       return const SizedBox.shrink();
     }
     if (visibleToken.isWidget) {
+      final visibleRun = data.toEndpoint == null ? fromRun : toRun;
       return _WidgetSpanFace(
         visibleToken.widgetSpan!,
         index: visibleIndex,
+        lineHeight: data.metrics.height,
+        lineBaseline: visibleRun.metrics.baselineFor(
+          visibleToken.widgetSpan!.baseline,
+        ),
         layout: layout,
       );
     }

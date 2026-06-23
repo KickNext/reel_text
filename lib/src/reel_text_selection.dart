@@ -78,11 +78,15 @@ InlineSpan _transparentInlineSpan(
   _WidgetSpanSizeCursor sizes,
 ) {
   if (span is WidgetSpan) {
+    final metrics = sizes.nextMetrics();
     return WidgetSpan(
       alignment: span.alignment,
       baseline: span.baseline,
       style: span.style,
-      child: SizedBox.fromSize(size: sizes.nextSize()),
+      child: _WidgetSpanSelectionPlaceholder(
+        metrics: metrics,
+        baseline: span.baseline,
+      ),
     );
   }
 
@@ -120,11 +124,80 @@ class _WidgetSpanSizeCursor {
   final _ReelTextLayoutContext layout;
   var _widgetOrdinal = 0;
 
-  Size nextSize() {
+  _WidgetSpanMetrics nextMetrics() {
     if (_widgetOrdinal >= widgetTokens.length) {
-      return Size.zero;
+      return const _WidgetSpanMetrics(size: Size.zero, baselineOffset: null);
     }
     final token = widgetTokens[_widgetOrdinal++];
-    return layout.widgetSpanSizeFor(token.index, token.span) ?? Size.zero;
+    return layout.widgetSpanMetricsFor(token.index, token.span) ??
+        const _WidgetSpanMetrics(size: Size.zero, baselineOffset: null);
+  }
+}
+
+class _WidgetSpanSelectionPlaceholder extends LeafRenderObjectWidget {
+  const _WidgetSpanSelectionPlaceholder({
+    required this.metrics,
+    required this.baseline,
+  });
+
+  final _WidgetSpanMetrics metrics;
+  final TextBaseline? baseline;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderWidgetSpanSelectionPlaceholder(
+      metrics: metrics,
+      baseline: baseline,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderWidgetSpanSelectionPlaceholder renderObject,
+  ) {
+    renderObject
+      ..metrics = metrics
+      ..baseline = baseline;
+  }
+}
+
+class _RenderWidgetSpanSelectionPlaceholder extends RenderBox {
+  _RenderWidgetSpanSelectionPlaceholder({
+    required _WidgetSpanMetrics metrics,
+    required TextBaseline? baseline,
+  })  : _metrics = metrics,
+        _baseline = baseline;
+
+  _WidgetSpanMetrics _metrics;
+  TextBaseline? _baseline;
+
+  set metrics(_WidgetSpanMetrics value) {
+    if (_metrics == value) {
+      return;
+    }
+    _metrics = value;
+    markNeedsLayout();
+  }
+
+  set baseline(TextBaseline? value) {
+    if (_baseline == value) {
+      return;
+    }
+    _baseline = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    size = constraints.constrain(_metrics.size);
+  }
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) {
+    if (_baseline == baseline) {
+      return _metrics.baselineOffset;
+    }
+    return null;
   }
 }

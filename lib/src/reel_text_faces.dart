@@ -72,24 +72,61 @@ class _WidgetSpanFace extends StatelessWidget {
   const _WidgetSpanFace(
     this.span, {
     required this.index,
+    required this.lineHeight,
+    required this.lineBaseline,
     required this.layout,
   });
 
   final WidgetSpan span;
   final int index;
+  final double lineHeight;
+  final double lineBaseline;
   final _ReelTextLayoutContext layout;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
+    final observer = _WidgetSpanSizeObserver(
+      identity: span,
+      onMetricsChanged: (metrics) =>
+          layout.onWidgetSpanMetricsChanged(index, span, metrics),
+      child: span.child,
+    );
+    final defaultFace = Align(
       widthFactor: 1,
       heightFactor: 1,
       alignment: _placeholderAlignment(span.alignment),
-      child: _WidgetSpanSizeObserver(
-        identity: span,
-        onSizeChanged: (size) =>
-            layout.onWidgetSpanSizeChanged(index, span, size),
-        child: span.child,
+      child: observer,
+    );
+    if (span.alignment != ui.PlaceholderAlignment.baseline) {
+      return defaultFace;
+    }
+
+    final metrics = layout.widgetSpanMetricsFor(index, span);
+    if (metrics == null || metrics.size == Size.zero) {
+      return defaultFace;
+    }
+
+    return SizedBox(
+      width: metrics.size.width,
+      height: lineHeight,
+      child: OverflowBox(
+        alignment: Alignment.topCenter,
+        minWidth: 0,
+        maxWidth: double.infinity,
+        minHeight: 0,
+        maxHeight: double.infinity,
+        child: Transform.translate(
+          offset: Offset(
+            0,
+            lineBaseline - (metrics.baselineOffset ?? metrics.size.height),
+          ),
+          child: Align(
+            widthFactor: 1,
+            heightFactor: 1,
+            alignment: Alignment.topCenter,
+            child: observer,
+          ),
+        ),
       ),
     );
   }
@@ -98,16 +135,16 @@ class _WidgetSpanFace extends StatelessWidget {
 class _WidgetSpanSizeObserver extends SingleChildRenderObjectWidget {
   const _WidgetSpanSizeObserver({
     required this.identity,
-    required this.onSizeChanged,
+    required this.onMetricsChanged,
     required super.child,
   });
 
   final WidgetSpan identity;
-  final ValueChanged<Size> onSizeChanged;
+  final ValueChanged<_WidgetSpanMetrics> onMetricsChanged;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return _RenderWidgetSpanSizeObserver(identity, onSizeChanged);
+    return _RenderWidgetSpanSizeObserver(identity, onMetricsChanged);
   }
 
   @override
@@ -117,38 +154,54 @@ class _WidgetSpanSizeObserver extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..identity = identity
-      ..onSizeChanged = onSizeChanged;
+      ..onMetricsChanged = onMetricsChanged;
   }
 }
 
 class _RenderWidgetSpanSizeObserver extends RenderProxyBox {
   _RenderWidgetSpanSizeObserver(
     WidgetSpan identity,
-    this.onSizeChanged,
+    this.onMetricsChanged,
   ) : _identity = identity;
 
   WidgetSpan _identity;
-  ValueChanged<Size> onSizeChanged;
-  Size? _reportedSize;
+  ValueChanged<_WidgetSpanMetrics> onMetricsChanged;
+  _WidgetSpanMetrics? _reportedMetrics;
 
   set identity(WidgetSpan value) {
     if (identical(_identity, value)) {
       return;
     }
     _identity = value;
-    _reportedSize = null;
+    _reportedMetrics = null;
   }
 
   @override
   void performLayout() {
     super.performLayout();
-    if (_reportedSize == size) {
+    final metrics = _WidgetSpanMetrics(
+      size: Size(size.width, size.height),
+      baselineOffset: _baselineOffsetForChild(),
+    );
+    if (_reportedMetrics == metrics) {
       return;
     }
-    _reportedSize = size;
+    _reportedMetrics = metrics;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      onSizeChanged(size);
+      onMetricsChanged(metrics);
     });
+  }
+
+  double? _baselineOffsetForChild() {
+    if (_identity.alignment != ui.PlaceholderAlignment.baseline) {
+      return null;
+    }
+    final baseline = _identity.baseline;
+    final child = this.child;
+    if (baseline == null || child == null) {
+      return null;
+    }
+    return child.getDistanceToBaseline(baseline);
   }
 }
 

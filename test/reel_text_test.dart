@@ -1915,6 +1915,76 @@ void main() {
         lessThan(expandedWidth - 40));
   });
 
+  testWidgets('rich text honors WidgetSpan child baseline', (tester) async {
+    const richTextKey = ValueKey('reel_rich_baseline_reference');
+    const reelKey = ValueKey('reel_rich_baseline_reel');
+    const richChildKey = ValueKey('reel_rich_baseline_reference_child');
+    const reelChildKey = ValueKey('reel_rich_baseline_reel_child');
+    const lineStyle = TextStyle(fontSize: 38, fontWeight: FontWeight.w700);
+    const childStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w400);
+
+    TextSpan spanFor(Key childKey) {
+      return TextSpan(
+        style: lineStyle,
+        children: [
+          const TextSpan(text: 'A'),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: Text('xy', key: childKey, style: childStyle),
+          ),
+          const TextSpan(text: 'B'),
+        ],
+      );
+    }
+
+    TextBox placeholderBox(Finder paragraphFinder) {
+      final paragraph = tester.renderObject<RenderParagraph>(paragraphFinder);
+      final boxes = paragraph.getBoxesForSelection(
+        const TextSelection(baseOffset: 1, extentOffset: 2),
+      );
+      expect(boxes, hasLength(1));
+      return boxes.single;
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(key: richTextKey, text: spanFor(richChildKey)),
+                const SizedBox(height: 24),
+                SelectionArea(
+                  child: ReelText.rich(spanFor(reelChildKey), key: reelKey),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final richChildTop = tester.getRect(find.byKey(richChildKey)).top -
+        tester.getRect(find.byKey(richTextKey)).top;
+    final reelChildTop = tester.getRect(find.byKey(reelChildKey)).top -
+        tester.getRect(find.byKey(reelKey)).top;
+    final richBox = placeholderBox(find.byKey(richTextKey));
+    final reelBox = placeholderBox(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(reelChildTop, closeTo(richChildTop, 1.0));
+    expect(reelBox.top, closeTo(richBox.top, 1.0));
+    expect(reelBox.bottom, closeTo(richBox.bottom, 1.0));
+  });
+
   testWidgets('rich text selection includes WidgetSpan width', (tester) async {
     const span = TextSpan(
       children: [
