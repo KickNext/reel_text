@@ -216,7 +216,7 @@ class _RenderScaledWidgetSpanChild extends RenderBox
 
   @override
   void applyPaintTransform(RenderBox child, Matrix4 transform) {
-    transform.scaleByDouble(scale, scale, scale, 1);
+    transform.multiply(Matrix4.diagonal3Values(scale, scale, scale));
   }
 
   @override
