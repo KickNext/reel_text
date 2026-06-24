@@ -54,6 +54,62 @@ class _MeasuredReelTextFrame {
   final _MeasuredReelTextRun run;
 }
 
+class _SettledReelTextCache {
+  const _SettledReelTextCache({
+    required this.key,
+    required this.measured,
+    required this.child,
+  });
+
+  final _SettledReelTextCacheKey key;
+  final _MeasuredReelTextFrame measured;
+  final Widget child;
+}
+
+class _SettledReelTextCacheKey {
+  const _SettledReelTextCacheKey({
+    required this.frame,
+    required this.style,
+    required this.textDirection,
+    required this.locale,
+    required this.strutStyle,
+    required this.textScaler,
+    required this.widgetSpanMetricsVersion,
+  });
+
+  final _ReelTextFrame frame;
+  final TextStyle style;
+  final TextDirection textDirection;
+  final Locale? locale;
+  final StrutStyle? strutStyle;
+  final TextScaler textScaler;
+  final int widgetSpanMetricsVersion;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _SettledReelTextCacheKey &&
+        _sameFrameTarget(frame, other.frame) &&
+        style == other.style &&
+        textDirection == other.textDirection &&
+        locale == other.locale &&
+        strutStyle == other.strutStyle &&
+        textScaler == other.textScaler &&
+        widgetSpanMetricsVersion == other.widgetSpanMetricsVersion;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        frame.text,
+        identityHashCode(frame.richText),
+        style,
+        textDirection,
+        locale,
+        strutStyle,
+        textScaler,
+        widgetSpanMetricsVersion,
+      );
+}
+
 class _ActiveRoll {
   const _ActiveRoll({
     required this.from,

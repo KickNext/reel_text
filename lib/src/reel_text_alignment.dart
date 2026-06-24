@@ -13,17 +13,11 @@ class _ReelTextAlignment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (!constraints.hasTightWidth) {
-          return child;
-        }
-
-        return Align(
-          alignment: _alignmentForTextAlign(textAlign, textDirection),
-          child: child,
-        );
-      },
+    return Align(
+      alignment: _alignmentForTextAlign(textAlign, textDirection),
+      widthFactor: 1,
+      heightFactor: 1,
+      child: child,
     );
   }
 }
