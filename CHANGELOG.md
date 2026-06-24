@@ -1,3 +1,14 @@
+## 0.4.0
+
+- Reworked plain rolling text slots to paint through cached render objects,
+  reducing per-frame widget rebuild work for dense `ReelText` scenes.
+- Added a full-screen performance stress screen to the example app with theme
+  support and adjustable tile density.
+- Fixed RTL rolling slot alignment while animated slot widths change.
+- Added intrinsic/dry layout support for painted rolling slots and disposed
+  transient/cached `TextPainter` resources used by the optimized paint path.
+- No public API changes.
+
 ## 0.3.0
 
 - Added `WidgetSpan` support to `ReelText.rich`: inline widgets now stay in the
