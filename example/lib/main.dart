@@ -221,6 +221,7 @@ class StudioShell extends StatefulWidget {
 
 class _StudioShellState extends State<StudioShell> {
   late int _page;
+  var _performanceTileTarget = 4.0;
 
   @override
   void initState() {
@@ -239,7 +240,12 @@ class _StudioShellState extends State<StudioShell> {
       TickerMode(enabled: _page == 2, child: const EditorPage()),
       TickerMode(
         enabled: _page == 3,
-        child: PerformancePage(active: _page == 3),
+        child: PerformancePage(
+          active: _page == 3,
+          tileTarget: _performanceTileTarget,
+          onTileTargetChanged: (value) =>
+              setState(() => _performanceTileTarget = value),
+        ),
       ),
     ];
     return Scaffold(

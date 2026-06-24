@@ -253,6 +253,121 @@ void main() {
     );
   });
 
+  testWidgets('performance page density slider increases stress tile count', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_performance')));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final initialTiles = _performanceTileClipCount();
+    expect(initialTiles, 4);
+    expect(
+      find.text(
+        'This is a stress test, not a normal usage example. Each ReelText '
+        'in the grid is independent and animates separately, so high density '
+        'can visibly slow down.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('performance_density_slider')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('performance_chroma_switch')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('performance_color_switch')),
+      findsNothing,
+    );
+    expect(find.text('4 tiles'), findsOneWidget);
+    final densityLayer = find.byKey(
+      const ValueKey('performance_density_layer'),
+    );
+    expect(densityLayer, findsOneWidget);
+    expect(tester.getSize(densityLayer).width, lessThan(400));
+    expect(tester.getSize(densityLayer).height, lessThan(170));
+
+    expect(
+      tester
+          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_0')))
+          .options
+          .colorBuilder,
+      isNotNull,
+    );
+    expect(
+      tester
+          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_1')))
+          .options
+          .color,
+      Studio.sky,
+    );
+
+    final slider = tester.widget<Slider>(
+      find.byKey(const ValueKey('performance_density_slider')),
+    );
+    final maxTiles = _performanceMaxTileCount(
+      tester.getSize(find.byKey(const ValueKey('performance_scene'))),
+    );
+    expect(slider.max, maxTiles);
+
+    slider.onChanged!(maxTiles);
+    await tester.pump();
+
+    expect(_performanceTileClipCount(), maxTiles);
+    final firstTile = tester.getRect(
+      find.byKey(const ValueKey('performance_tile_clip_0')),
+    );
+    final secondTile = tester.getRect(
+      find.byKey(const ValueKey('performance_tile_clip_1')),
+    );
+    expect(secondTile.left - firstTile.right, greaterThanOrEqualTo(6));
+
+    final stressedTiles = _performanceTileClipCount();
+    await tester.tap(find.byKey(const ValueKey('theme_toggle_button')));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      tester
+          .widget<Slider>(
+            find.byKey(const ValueKey('performance_density_slider')),
+          )
+          .value,
+      maxTiles,
+    );
+    expect(
+      find.byKey(const ValueKey('performance_chroma_switch')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('performance_color_switch')),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_0')))
+          .options
+          .colorBuilder,
+      isNotNull,
+    );
+    expect(
+      tester
+          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_1')))
+          .options
+          .color,
+      Studio.sky,
+    );
+    expect(_performanceTileClipCount(), stressedTiles);
+  });
+
   testWidgets('app bar theme toggle switches the studio palette', (
     tester,
   ) async {
@@ -1348,6 +1463,27 @@ Finder _semanticButtonWithLabel(String label) {
         widget.properties.label == label,
     description: 'semantic button with label "$label"',
   );
+}
+
+int _performanceTileClipCount() {
+  return find
+      .byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'performance_tile_clip_',
+            ),
+        description: 'performance tile clips',
+      )
+      .evaluate()
+      .length;
+}
+
+double _performanceMaxTileCount(Size size) {
+  final compact = size.width < 720;
+  final columns = (size.width / ((compact ? 82 : 126) / 3)).ceil();
+  final rows = (size.height / ((compact ? 52 : 64) / 3)).ceil();
+  return (columns * rows).toDouble();
 }
 
 Color? _panelColor(WidgetTester tester, String key) {
