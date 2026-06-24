@@ -1,7 +1,5 @@
 part of 'reel_text.dart';
 
-const _kRollingTextColorFaceSteps = 8;
-
 class _SettledTokenSlot extends StatelessWidget {
   const _SettledTokenSlot(
     this.token, {
@@ -278,7 +276,6 @@ class _RenderRollingTextSlotFace extends RenderBox {
   Color _defaultTextColor;
   _PreparedTextFace? _fromFace;
   _PreparedTextFace? _toFace;
-  final _toColorFaces = <int, _PreparedTextFace>{};
   var _preparedFaceLayoutCount = 0;
 
   _TokenSlotRenderData get data => _data;
@@ -484,10 +481,11 @@ class _RenderRollingTextSlotFace extends RenderBox {
           opacity: 1,
         );
       } else {
-        final face = _preparedToColorFace(incomingColor);
-        _paintPreparedTokenFace(
+        _paintTokenFace(
           canvas,
-          face: face,
+          text: _data.toText,
+          style: _data.effectiveToStyle.copyWith(color: incomingColor),
+          width: _data.metrics.toWidth,
           dy: dy,
           angle: angle,
           opacity: 1,
@@ -523,20 +521,6 @@ class _RenderRollingTextSlotFace extends RenderBox {
       paintWidth: paintWidth,
       faceDx: _faceDxFor(width),
       paintDx: _paintDxFor(width, paintWidth),
-    );
-  }
-
-  _PreparedTextFace _preparedToColorFace(Color color) {
-    final key = _colorCacheKey(color);
-    return _toColorFaces.putIfAbsent(
-      key,
-      () => _prepareTokenFace(
-        text: _data.toText,
-        style: _data.effectiveToStyle.copyWith(
-          color: _quantizedColor(color),
-        ),
-        width: _data.metrics.toWidth,
-      ),
     );
   }
 
@@ -579,10 +563,65 @@ class _RenderRollingTextSlotFace extends RenderBox {
     canvas.restore();
   }
 
+  void _paintTokenFace(
+    Canvas canvas, {
+    required String text,
+    required TextStyle style,
+    required double width,
+    required double dy,
+    required double angle,
+    required double opacity,
+  }) {
+    if (text.isEmpty || opacity <= 0.001) {
+      return;
+    }
+
+    final height = _data.metrics.height;
+    final horizontalBleed = _horizontalTextTokenBleed(height);
+    final paintWidth = width + horizontalBleed;
+    final faceDx = _faceDxFor(width);
+    final paintDx = _paintDxFor(width, paintWidth);
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: _layout.textDirection,
+      textAlign: TextAlign.start,
+      textScaler: _textScaler,
+      locale: _layout.locale,
+      strutStyle: _layout.strutStyle,
+      maxLines: 1,
+    )..layout(minWidth: paintWidth, maxWidth: paintWidth);
+
+    canvas.save();
+    canvas.translate(faceDx + width / 2, dy + height / 2);
+    if (angle != 0) {
+      canvas.rotate(angle);
+    }
+    canvas.translate(-width / 2, -height / 2);
+
+    if (opacity < 0.999) {
+      canvas.saveLayer(
+        Rect.fromLTWH(paintDx, 0, paintWidth, height),
+        Paint()
+          ..color = Color.fromARGB(
+            (opacity.clamp(0.0, 1.0) * 255).round(),
+            255,
+            255,
+            255,
+          ),
+      );
+    }
+
+    painter.paint(canvas, Offset(paintDx, 0));
+
+    if (opacity < 0.999) {
+      canvas.restore();
+    }
+    canvas.restore();
+  }
+
   void _clearPreparedFaces() {
     _fromFace = null;
     _toFace = null;
-    _toColorFaces.clear();
   }
 
   double _faceDxFor(double width) {
@@ -598,20 +637,6 @@ class _RenderRollingTextSlotFace extends RenderBox {
         ? width - paintWidth
         : 0.0;
   }
-}
-
-int _colorCacheKey(Color color) => _quantizedColor(color).toARGB32();
-
-Color _quantizedColor(Color color) {
-  double quantize(double value) =>
-      (value * _kRollingTextColorFaceSteps).round() /
-      _kRollingTextColorFaceSteps;
-  return Color.from(
-    alpha: quantize(color.a),
-    red: quantize(color.r),
-    green: quantize(color.g),
-    blue: quantize(color.b),
-  );
 }
 
 class _PreparedTextFace {

@@ -932,38 +932,6 @@ void main() {
     expect(_debugPreparedFaceLayoutCount(slot), preparedLayouts);
   });
 
-  testWidgets('rolling color fade uses a bounded prepared face cache', (
-    tester,
-  ) async {
-    const options = ReelTextOptions(
-      duration: Duration(milliseconds: 80),
-      stagger: Duration.zero,
-      exitOffset: Duration.zero,
-      color: Colors.blue,
-      colorFade: Duration(milliseconds: 120),
-    );
-
-    Widget frame(String text) {
-      return Directionality(
-        textDirection: TextDirection.ltr,
-        child: ReelText(text, options: options, style: _textStyle(32)),
-      );
-    }
-
-    await tester.pumpWidget(frame('a'));
-    await tester.pumpWidget(frame('b'));
-    await tester.pump();
-
-    final slot = tester.renderObject<RenderBox>(
-      find.byKey(const ValueKey('reel_text_rolling_text_slot')),
-    );
-
-    expect(_debugPreparedFaceLayoutCount(slot), greaterThan(1));
-
-    await tester.pump(const Duration(milliseconds: 220));
-    expect(_debugPreparedFaceLayoutCount(slot), lessThanOrEqualTo(11));
-  });
-
   testWidgets('inserted glyph widths expand during a roll', (tester) async {
     const reelKey = ValueKey('reel_interpolated_width');
     const style = TextStyle(
