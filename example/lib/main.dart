@@ -11,11 +11,15 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'editor_page.dart';
 import 'home_page.dart';
+import 'performance_page.dart';
 import 'recipes_page.dart';
 import 'studio.dart';
 
 const double _kShellMaxWidth = 1280;
 const String _kThemePreferenceKey = 'reel_text_example_brightness';
+const int _kInitialPageFromEnvironment = int.fromEnvironment(
+  'REEL_TEXT_EXAMPLE_INITIAL_PAGE',
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,6 +76,7 @@ class ReelTextExampleApp extends StatefulWidget {
     super.key,
     this.useGoogleFonts = true,
     this.autoPlayHero = true,
+    this.initialPage = _kInitialPageFromEnvironment,
     this.initialBrightnessOverride,
     this.themePreferenceStore = const ThemePreferenceStore(),
   });
@@ -82,6 +87,7 @@ class ReelTextExampleApp extends StatefulWidget {
   /// Set to false in widget tests so the hero stage does not auto-advance.
   final bool autoPlayHero;
 
+  final int initialPage;
   final Brightness? initialBrightnessOverride;
   final ThemePreferenceStore themePreferenceStore;
 
@@ -185,6 +191,7 @@ class _ReelTextExampleAppState extends State<ReelTextExampleApp>
       home: StudioShell(
         autoPlayHero: widget.autoPlayHero,
         loadLiveMetadata: widget.useGoogleFonts,
+        initialPage: widget.initialPage,
         brightness: brightness,
         onBrightnessChanged: _setBrightness,
       ),
@@ -197,12 +204,14 @@ class StudioShell extends StatefulWidget {
     super.key,
     this.autoPlayHero = true,
     this.loadLiveMetadata = true,
+    this.initialPage = 0,
     required this.brightness,
     required this.onBrightnessChanged,
   });
 
   final bool autoPlayHero;
   final bool loadLiveMetadata;
+  final int initialPage;
   final Brightness brightness;
   final ValueChanged<Brightness> onBrightnessChanged;
 
@@ -211,7 +220,13 @@ class StudioShell extends StatefulWidget {
 }
 
 class _StudioShellState extends State<StudioShell> {
-  int _page = 0;
+  late int _page;
+
+  @override
+  void initState() {
+    super.initState();
+    _page = widget.initialPage.clamp(0, 3).toInt();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +237,10 @@ class _StudioShellState extends State<StudioShell> {
       ),
       TickerMode(enabled: _page == 1, child: const RecipesPage()),
       TickerMode(enabled: _page == 2, child: const EditorPage()),
+      TickerMode(
+        enabled: _page == 3,
+        child: PerformancePage(active: _page == 3),
+      ),
     ];
     return Scaffold(
       body: SafeArea(
@@ -274,7 +293,7 @@ class _TopBarState extends State<_TopBar> {
   late Future<_PackageStats> _stats;
   Timer? _statsRefreshTimer;
 
-  static const _pageNames = ['HOME', 'RECIPES', 'EDITOR'];
+  static const _pageNames = ['HOME', 'RECIPES', 'EDITOR', 'PERF'];
   static const _statsRefreshInterval = Duration(seconds: 125);
 
   static final _pubDevUri = Uri.parse('https://pub.dev/packages/reel_text');
@@ -566,60 +585,75 @@ class _PageTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visualTabs = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < pageNames.length; i++)
-          _PageTabVisual(
-            label: pageNames[i],
-            selected: i == selected,
-            compact: compact,
-          ),
-      ],
-    );
-    final hitTargets = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < pageNames.length; i++)
-          _PageTabHitTarget(
-            key: ValueKey('page_tab_${pageNames[i].toLowerCase()}'),
-            label: pageNames[i],
-            selected: i == selected,
-            compact: compact,
-            onTap: () => onPageChanged(i),
-          ),
-      ],
-    );
+    final media = MediaQuery.of(context);
+    return MediaQuery(
+      data: media.copyWith(textScaler: TextScaler.noScaling),
+      child: Builder(
+        builder: (context) {
+          final visualTabs = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < pageNames.length; i++)
+                _PageTabVisual(
+                  label: pageNames[i],
+                  selected: i == selected,
+                  compact: compact,
+                ),
+            ],
+          );
+          final hitTargets = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < pageNames.length; i++)
+                _PageTabHitTarget(
+                  key: ValueKey('page_tab_${_pageTabKey(pageNames[i])}'),
+                  label: pageNames[i],
+                  selected: i == selected,
+                  compact: compact,
+                  onTap: () => onPageChanged(i),
+                ),
+            ],
+          );
 
-    return SizedBox(
-      key: const ValueKey('page_tabs_frame'),
-      height: 48,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          ExcludeSemantics(
-            child: Center(
-              child: DecoratedBox(
-                key: const ValueKey('page_tabs_rail'),
-                decoration: BoxDecoration(
-                  color: Studio.inset.withValues(alpha: 0.88),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Studio.borderBright.withValues(alpha: 0.42),
+          return SizedBox(
+            key: const ValueKey('page_tabs_frame'),
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ExcludeSemantics(
+                  child: Center(
+                    child: DecoratedBox(
+                      key: const ValueKey('page_tabs_rail'),
+                      decoration: BoxDecoration(
+                        color: Studio.inset.withValues(alpha: 0.88),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Studio.borderBright.withValues(alpha: 0.42),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: visualTabs,
+                      ),
+                    ),
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(3),
-                  child: visualTabs,
-                ),
-              ),
+                Center(child: hitTargets),
+              ],
             ),
-          ),
-          Center(child: hitTargets),
-        ],
+          );
+        },
       ),
     );
   }
+}
+
+String _pageTabKey(String label) {
+  return switch (label) {
+    'PERF' => 'performance',
+    _ => label.toLowerCase(),
+  };
 }
 
 class _PageTabVisual extends StatelessWidget {

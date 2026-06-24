@@ -17,6 +17,8 @@ It demonstrates:
 - Numeric counters, status pills, rotating labels, and rich text.
 - A motion workbench with target editing, direction/color/timing controls, and
   a `ReelText.controller` preview.
+- A full-screen Performance page with a checkerboard of looping `ReelText`
+  swaps for visual stress testing.
 
 Run it with:
 

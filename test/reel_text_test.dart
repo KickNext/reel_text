@@ -898,6 +898,40 @@ void main() {
     );
   });
 
+  testWidgets('rolling text slot reuses prepared face layouts while painting', (
+    tester,
+  ) async {
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 180),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText(text, options: options, style: _textStyle(32)),
+      );
+    }
+
+    await tester.pumpWidget(frame('a'));
+    await tester.pumpWidget(frame('b'));
+    await tester.pump();
+
+    final slot = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+    );
+    final preparedLayouts = _debugPreparedFaceLayoutCount(slot);
+
+    expect(preparedLayouts, greaterThan(0));
+
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(_debugPreparedFaceLayoutCount(slot), preparedLayouts);
+
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(_debugPreparedFaceLayoutCount(slot), preparedLayouts);
+  });
+
   testWidgets('inserted glyph widths expand during a roll', (tester) async {
     const reelKey = ValueKey('reel_interpolated_width');
     const style = TextStyle(
@@ -3796,6 +3830,14 @@ bool _isEffectivelyOpaque(Element element) {
     return true;
   });
   return opaque;
+}
+
+int _debugPreparedFaceLayoutCount(RenderBox renderObject) {
+  try {
+    return (renderObject as dynamic).debugPreparedFaceLayoutCount as int;
+  } on Object {
+    return -1;
+  }
 }
 
 double _leftOfGlyph(List<_GlyphPosition> entries, String glyph) {

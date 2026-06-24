@@ -274,6 +274,9 @@ class _RenderRollingTextSlotFace extends RenderBox {
   _ReelTextLayoutContext _layout;
   TextScaler _textScaler;
   Color _defaultTextColor;
+  _PreparedTextFace? _fromFace;
+  _PreparedTextFace? _toFace;
+  var _preparedFaceLayoutCount = 0;
 
   _TokenSlotRenderData get data => _data;
 
@@ -282,6 +285,7 @@ class _RenderRollingTextSlotFace extends RenderBox {
       return;
     }
     _data = value;
+    _clearPreparedFaces();
     markNeedsLayout();
     markNeedsPaint();
   }
@@ -321,6 +325,7 @@ class _RenderRollingTextSlotFace extends RenderBox {
       return;
     }
     _layout = value;
+    _clearPreparedFaces();
     markNeedsPaint();
   }
 
@@ -331,6 +336,7 @@ class _RenderRollingTextSlotFace extends RenderBox {
       return;
     }
     _textScaler = value;
+    _clearPreparedFaces();
     markNeedsPaint();
   }
 
@@ -341,11 +347,14 @@ class _RenderRollingTextSlotFace extends RenderBox {
       return;
     }
     _defaultTextColor = value;
+    _clearPreparedFaces();
     markNeedsPaint();
   }
 
   double get debugIncomingY =>
       _data.slot.inY(_progressMs, _data.travelDistance);
+
+  int get debugPreparedFaceLayoutCount => _preparedFaceLayoutCount;
 
   double get debugHorizontalBleed =>
       _horizontalTextTokenBleed(_data.metrics.height);
@@ -437,11 +446,13 @@ class _RenderRollingTextSlotFace extends RenderBox {
     canvas.translate(offset.dx, offset.dy);
 
     if (_data.fromEndpoint != null) {
-      _paintTokenFace(
+      _paintPreparedTokenFace(
         canvas,
-        text: _data.fromText,
-        style: _data.effectiveFromStyle,
-        width: _data.metrics.fromWidth,
+        face: _fromFace ??= _prepareTokenFace(
+          text: _data.fromText,
+          style: _data.effectiveFromStyle,
+          width: _data.metrics.fromWidth,
+        ),
         dy: _data.slot.outY(progressMs, _data.travelDistance),
         angle: -_data.slot.tiltRadians * _data.slot.outT(progressMs),
         opacity: _data.slot.outOpacity(progressMs),
@@ -455,17 +466,100 @@ class _RenderRollingTextSlotFace extends RenderBox {
               _defaultTextColor,
               _data.slot.colorT(progressMs),
             )!;
-      _paintTokenFace(
-        canvas,
-        text: _data.toText,
-        style: _data.effectiveToStyle.copyWith(color: incomingColor),
-        width: _data.metrics.toWidth,
-        dy: _data.slot.inY(progressMs, _data.travelDistance),
-        angle: _data.slot.tiltRadians * (1 - _data.slot.inT(progressMs)),
-        opacity: 1,
+      final angle = _data.slot.tiltRadians * (1 - _data.slot.inT(progressMs));
+      final dy = _data.slot.inY(progressMs, _data.travelDistance);
+      if (_data.slot.color == null) {
+        _paintPreparedTokenFace(
+          canvas,
+          face: _toFace ??= _prepareTokenFace(
+            text: _data.toText,
+            style: _data.effectiveToStyle.copyWith(color: incomingColor),
+            width: _data.metrics.toWidth,
+          ),
+          dy: dy,
+          angle: angle,
+          opacity: 1,
+        );
+      } else {
+        _paintTokenFace(
+          canvas,
+          text: _data.toText,
+          style: _data.effectiveToStyle.copyWith(color: incomingColor),
+          width: _data.metrics.toWidth,
+          dy: dy,
+          angle: angle,
+          opacity: 1,
+        );
+      }
+    }
+
+    canvas.restore();
+  }
+
+  _PreparedTextFace _prepareTokenFace({
+    required String text,
+    required TextStyle style,
+    required double width,
+  }) {
+    final height = _data.metrics.height;
+    final horizontalBleed = _horizontalTextTokenBleed(height);
+    final paintWidth = width + horizontalBleed;
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: _layout.textDirection,
+      textAlign: TextAlign.start,
+      textScaler: _textScaler,
+      locale: _layout.locale,
+      strutStyle: _layout.strutStyle,
+      maxLines: 1,
+    )..layout(minWidth: paintWidth, maxWidth: paintWidth);
+    _preparedFaceLayoutCount++;
+    return _PreparedTextFace(
+      painter: painter,
+      width: width,
+      height: height,
+      paintWidth: paintWidth,
+      faceDx: _faceDxFor(width),
+      paintDx: _paintDxFor(width, paintWidth),
+    );
+  }
+
+  void _paintPreparedTokenFace(
+    Canvas canvas, {
+    required _PreparedTextFace face,
+    required double dy,
+    required double angle,
+    required double opacity,
+  }) {
+    if (opacity <= 0.001) {
+      return;
+    }
+
+    canvas.save();
+    canvas.translate(face.faceDx + face.width / 2, dy + face.height / 2);
+    if (angle != 0) {
+      canvas.rotate(angle);
+    }
+    canvas.translate(-face.width / 2, -face.height / 2);
+
+    if (opacity < 0.999) {
+      canvas.saveLayer(
+        Rect.fromLTWH(face.paintDx, 0, face.paintWidth, face.height),
+        Paint()
+          ..color = Color.fromARGB(
+            (opacity.clamp(0.0, 1.0) * 255).round(),
+            255,
+            255,
+            255,
+          ),
       );
     }
 
+    face.painter.paint(canvas, Offset(face.paintDx, 0));
+
+    if (opacity < 0.999) {
+      canvas.restore();
+    }
     canvas.restore();
   }
 
@@ -525,6 +619,11 @@ class _RenderRollingTextSlotFace extends RenderBox {
     canvas.restore();
   }
 
+  void _clearPreparedFaces() {
+    _fromFace = null;
+    _toFace = null;
+  }
+
   double _faceDxFor(double width) {
     return _layout.inlineStartAlignment
         .alongOffset(
@@ -538,6 +637,24 @@ class _RenderRollingTextSlotFace extends RenderBox {
         ? width - paintWidth
         : 0.0;
   }
+}
+
+class _PreparedTextFace {
+  const _PreparedTextFace({
+    required this.painter,
+    required this.width,
+    required this.height,
+    required this.paintWidth,
+    required this.faceDx,
+    required this.paintDx,
+  });
+
+  final TextPainter painter;
+  final double width;
+  final double height;
+  final double paintWidth;
+  final double faceDx;
+  final double paintDx;
 }
 
 class _VerticalSlotClipper extends CustomClipper<Rect> {
