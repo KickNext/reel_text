@@ -85,13 +85,7 @@ class _RollingTokenSlot extends StatelessWidget {
     if (data.hasWidgetEndpoint) {
       return _buildAtomicSwap(data);
     }
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, _) {
-        final progressMs = animation.value * totalDurationMs;
-        return _buildRollingText(context, data, progressMs);
-      },
-    );
+    return _buildPaintedRollingText(context, data);
   }
 
   Widget _buildUnchanged(_TokenSlotRenderData data) {
@@ -156,74 +150,26 @@ class _RollingTokenSlot extends StatelessWidget {
     );
   }
 
-  Widget _buildRollingText(
+  Widget _buildPaintedRollingText(
     BuildContext context,
     _TokenSlotRenderData data,
-    double progressMs,
   ) {
-    final width = ui.lerpDouble(
-      data.metrics.fromWidth,
-      data.metrics.toWidth,
-      slot.widthT(progressMs),
-    )!;
     final textColor = data.effectiveToStyle.color ??
         DefaultTextStyle.of(context).style.color ??
         Colors.black;
-    final incomingColor = slot.color == null
-        ? textColor
-        : Color.lerp(slot.color, textColor, slot.colorT(progressMs))!;
 
     return ClipRect(
       clipper: const _VerticalSlotClipper(),
       clipBehavior: Clip.hardEdge,
-      child: SizedBox(
-        width: width,
-        height: data.metrics.height,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: layout.inlineStartAlignment,
-          children: [
-            if (data.fromEndpoint != null)
-              Opacity(
-                opacity: slot.outOpacity(progressMs),
-                child: Transform.translate(
-                  offset: Offset(0, slot.outY(progressMs, data.travelDistance)),
-                  child: Transform.rotate(
-                    angle: -slot.tiltRadians * slot.outT(progressMs),
-                    child: _TextTokenFace(
-                      data.fromText,
-                      width: data.metrics.fromWidth,
-                      height: data.metrics.height,
-                      horizontalBleed: _horizontalTextTokenBleed(
-                        data.metrics.height,
-                      ),
-                      style: data.effectiveFromStyle,
-                      layout: layout,
-                    ),
-                  ),
-                ),
-              ),
-            if (data.toEndpoint != null)
-              Transform.translate(
-                offset: Offset(0, slot.inY(progressMs, data.travelDistance)),
-                child: Transform.rotate(
-                  angle: slot.tiltRadians * (1 - slot.inT(progressMs)),
-                  child: _TextTokenFace(
-                    data.toText,
-                    width: data.metrics.toWidth,
-                    height: data.metrics.height,
-                    horizontalBleed: _horizontalTextTokenBleed(
-                      data.metrics.height,
-                    ),
-                    style: data.effectiveToStyle.copyWith(
-                      color: incomingColor,
-                    ),
-                    layout: layout,
-                  ),
-                ),
-              ),
-          ],
-        ),
+      child: _RollingTextSlotFace(
+        key: const ValueKey('reel_text_rolling_text_slot'),
+        data: data,
+        animation: animation,
+        totalDurationMs: totalDurationMs,
+        layout: layout,
+        textScaler:
+            MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling,
+        defaultTextColor: textColor,
       ),
     );
   }
@@ -260,6 +206,338 @@ class _TokenSlotRenderData {
 
   double get travelDistance =>
       metrics.height + _verticalSlotBleed(metrics.height) * 2;
+}
+
+class _RollingTextSlotFace extends LeafRenderObjectWidget {
+  const _RollingTextSlotFace({
+    super.key,
+    required this.data,
+    required this.animation,
+    required this.totalDurationMs,
+    required this.layout,
+    required this.textScaler,
+    required this.defaultTextColor,
+  });
+
+  final _TokenSlotRenderData data;
+  final Animation<double> animation;
+  final int totalDurationMs;
+  final _ReelTextLayoutContext layout;
+  final TextScaler textScaler;
+  final Color defaultTextColor;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderRollingTextSlotFace(
+      data: data,
+      animation: animation,
+      totalDurationMs: totalDurationMs,
+      layout: layout,
+      textScaler: textScaler,
+      defaultTextColor: defaultTextColor,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderRollingTextSlotFace renderObject,
+  ) {
+    renderObject
+      ..data = data
+      ..animation = animation
+      ..totalDurationMs = totalDurationMs
+      ..layoutContext = layout
+      ..textScaler = textScaler
+      ..defaultTextColor = defaultTextColor;
+  }
+}
+
+class _RenderRollingTextSlotFace extends RenderBox {
+  _RenderRollingTextSlotFace({
+    required _TokenSlotRenderData data,
+    required Animation<double> animation,
+    required int totalDurationMs,
+    required _ReelTextLayoutContext layout,
+    required TextScaler textScaler,
+    required Color defaultTextColor,
+  })  : _data = data,
+        _animation = animation,
+        _totalDurationMs = totalDurationMs,
+        _layout = layout,
+        _textScaler = textScaler,
+        _defaultTextColor = defaultTextColor;
+
+  _TokenSlotRenderData _data;
+  Animation<double> _animation;
+  int _totalDurationMs;
+  _ReelTextLayoutContext _layout;
+  TextScaler _textScaler;
+  Color _defaultTextColor;
+
+  _TokenSlotRenderData get data => _data;
+
+  set data(_TokenSlotRenderData value) {
+    if (identical(_data, value)) {
+      return;
+    }
+    _data = value;
+    markNeedsLayout();
+    markNeedsPaint();
+  }
+
+  Animation<double> get animation => _animation;
+
+  set animation(Animation<double> value) {
+    if (identical(_animation, value)) {
+      return;
+    }
+    if (attached) {
+      _animation.removeListener(_handleAnimationTick);
+    }
+    _animation = value;
+    if (attached) {
+      _animation.addListener(_handleAnimationTick);
+    }
+    markNeedsLayout();
+    markNeedsPaint();
+  }
+
+  int get totalDurationMs => _totalDurationMs;
+
+  set totalDurationMs(int value) {
+    if (_totalDurationMs == value) {
+      return;
+    }
+    _totalDurationMs = value;
+    markNeedsLayout();
+    markNeedsPaint();
+  }
+
+  _ReelTextLayoutContext get layoutContext => _layout;
+
+  set layoutContext(_ReelTextLayoutContext value) {
+    if (identical(_layout, value)) {
+      return;
+    }
+    _layout = value;
+    markNeedsPaint();
+  }
+
+  TextScaler get textScaler => _textScaler;
+
+  set textScaler(TextScaler value) {
+    if (_textScaler == value) {
+      return;
+    }
+    _textScaler = value;
+    markNeedsPaint();
+  }
+
+  Color get defaultTextColor => _defaultTextColor;
+
+  set defaultTextColor(Color value) {
+    if (_defaultTextColor == value) {
+      return;
+    }
+    _defaultTextColor = value;
+    markNeedsPaint();
+  }
+
+  double get debugIncomingY =>
+      _data.slot.inY(_progressMs, _data.travelDistance);
+
+  double get debugHorizontalBleed =>
+      _horizontalTextTokenBleed(_data.metrics.height);
+
+  List<Map<String, Object>> get debugVisibleGlyphBounds {
+    final progressMs = _progressMs;
+    final entries = <Map<String, Object>>[];
+    if (_data.fromEndpoint != null) {
+      _addDebugGlyphBounds(
+        entries,
+        text: _data.fromText,
+        width: _data.metrics.fromWidth,
+        dy: _data.slot.outY(progressMs, _data.travelDistance),
+        opacity: _data.slot.outOpacity(progressMs),
+      );
+    }
+    if (_data.toEndpoint != null) {
+      _addDebugGlyphBounds(
+        entries,
+        text: _data.toText,
+        width: _data.metrics.toWidth,
+        dy: _data.slot.inY(progressMs, _data.travelDistance),
+        opacity: 1,
+      );
+    }
+    return entries;
+  }
+
+  void _addDebugGlyphBounds(
+    List<Map<String, Object>> entries, {
+    required String text,
+    required double width,
+    required double dy,
+    required double opacity,
+  }) {
+    if (text.isEmpty || opacity <= 0.01) {
+      return;
+    }
+    final height = _data.metrics.height;
+    final paintWidth = width + _horizontalTextTokenBleed(height);
+    entries.add({
+      'text': text,
+      'left': _faceDxFor(width) + _paintDxFor(width, paintWidth),
+      'top': dy,
+      'bottom': dy + height,
+    });
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _animation.addListener(_handleAnimationTick);
+  }
+
+  @override
+  void detach() {
+    _animation.removeListener(_handleAnimationTick);
+    super.detach();
+  }
+
+  void _handleAnimationTick() {
+    markNeedsLayout();
+    markNeedsPaint();
+  }
+
+  double get _progressMs => _animation.value * _totalDurationMs;
+
+  double get _currentWidth {
+    return ui.lerpDouble(
+      _data.metrics.fromWidth,
+      _data.metrics.toWidth,
+      _data.slot.widthT(_progressMs),
+    )!;
+  }
+
+  @override
+  void performLayout() {
+    size = constraints.constrain(
+      Size(_currentWidth, _data.metrics.height),
+    );
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final canvas = context.canvas;
+    final progressMs = _progressMs;
+
+    canvas.save();
+    canvas.translate(offset.dx, offset.dy);
+
+    if (_data.fromEndpoint != null) {
+      _paintTokenFace(
+        canvas,
+        text: _data.fromText,
+        style: _data.effectiveFromStyle,
+        width: _data.metrics.fromWidth,
+        dy: _data.slot.outY(progressMs, _data.travelDistance),
+        angle: -_data.slot.tiltRadians * _data.slot.outT(progressMs),
+        opacity: _data.slot.outOpacity(progressMs),
+      );
+    }
+    if (_data.toEndpoint != null) {
+      final incomingColor = _data.slot.color == null
+          ? _defaultTextColor
+          : Color.lerp(
+              _data.slot.color,
+              _defaultTextColor,
+              _data.slot.colorT(progressMs),
+            )!;
+      _paintTokenFace(
+        canvas,
+        text: _data.toText,
+        style: _data.effectiveToStyle.copyWith(color: incomingColor),
+        width: _data.metrics.toWidth,
+        dy: _data.slot.inY(progressMs, _data.travelDistance),
+        angle: _data.slot.tiltRadians * (1 - _data.slot.inT(progressMs)),
+        opacity: 1,
+      );
+    }
+
+    canvas.restore();
+  }
+
+  void _paintTokenFace(
+    Canvas canvas, {
+    required String text,
+    required TextStyle style,
+    required double width,
+    required double dy,
+    required double angle,
+    required double opacity,
+  }) {
+    if (text.isEmpty || opacity <= 0.001) {
+      return;
+    }
+
+    final height = _data.metrics.height;
+    final horizontalBleed = _horizontalTextTokenBleed(height);
+    final paintWidth = width + horizontalBleed;
+    final faceDx = _faceDxFor(width);
+    final paintDx = _paintDxFor(width, paintWidth);
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: _layout.textDirection,
+      textAlign: TextAlign.start,
+      textScaler: _textScaler,
+      locale: _layout.locale,
+      strutStyle: _layout.strutStyle,
+      maxLines: 1,
+    )..layout(minWidth: paintWidth, maxWidth: paintWidth);
+
+    canvas.save();
+    canvas.translate(faceDx + width / 2, dy + height / 2);
+    if (angle != 0) {
+      canvas.rotate(angle);
+    }
+    canvas.translate(-width / 2, -height / 2);
+
+    if (opacity < 0.999) {
+      canvas.saveLayer(
+        Rect.fromLTWH(paintDx, 0, paintWidth, height),
+        Paint()
+          ..color = Color.fromARGB(
+            (opacity.clamp(0.0, 1.0) * 255).round(),
+            255,
+            255,
+            255,
+          ),
+      );
+    }
+
+    painter.paint(canvas, Offset(paintDx, 0));
+
+    if (opacity < 0.999) {
+      canvas.restore();
+    }
+    canvas.restore();
+  }
+
+  double _faceDxFor(double width) {
+    return _layout.inlineStartAlignment
+        .alongOffset(
+          Offset(size.width - width, 0),
+        )
+        .dx;
+  }
+
+  double _paintDxFor(double width, double paintWidth) {
+    return _layout.textDirection == TextDirection.rtl
+        ? width - paintWidth
+        : 0.0;
+  }
 }
 
 class _VerticalSlotClipper extends CustomClipper<Rect> {
