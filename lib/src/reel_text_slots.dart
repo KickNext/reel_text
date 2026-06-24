@@ -356,6 +356,11 @@ class _RenderRollingTextSlotFace extends RenderBox {
 
   int get debugPreparedFaceLayoutCount => _preparedFaceLayoutCount;
 
+  double get debugPreparedToFaceDx =>
+      _toFace == null ? double.nan : _faceDxFor(_toFace!.width);
+
+  double get debugCurrentToFaceDx => _faceDxFor(_data.metrics.toWidth);
+
   double get debugHorizontalBleed =>
       _horizontalTextTokenBleed(_data.metrics.height);
 
@@ -519,7 +524,6 @@ class _RenderRollingTextSlotFace extends RenderBox {
       width: width,
       height: height,
       paintWidth: paintWidth,
-      faceDx: _faceDxFor(width),
       paintDx: _paintDxFor(width, paintWidth),
     );
   }
@@ -535,8 +539,10 @@ class _RenderRollingTextSlotFace extends RenderBox {
       return;
     }
 
+    final faceDx = _faceDxFor(face.width);
+
     canvas.save();
-    canvas.translate(face.faceDx + face.width / 2, dy + face.height / 2);
+    canvas.translate(faceDx + face.width / 2, dy + face.height / 2);
     if (angle != 0) {
       canvas.rotate(angle);
     }
@@ -645,7 +651,6 @@ class _PreparedTextFace {
     required this.width,
     required this.height,
     required this.paintWidth,
-    required this.faceDx,
     required this.paintDx,
   });
 
@@ -653,7 +658,6 @@ class _PreparedTextFace {
   final double width;
   final double height;
   final double paintWidth;
-  final double faceDx;
   final double paintDx;
 }
 

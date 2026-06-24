@@ -932,6 +932,65 @@ void main() {
     expect(_debugPreparedFaceLayoutCount(slot), preparedLayouts);
   });
 
+  testWidgets('RTL prepared text face tracks animated slot width', (
+    tester,
+  ) async {
+    const options = ReelTextOptions(
+      direction: ReelTextDirection.down,
+      duration: Duration(milliseconds: 240),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      curve: Curves.linear,
+      bounce: 0,
+      skipUnchanged: false,
+    );
+    const style = TextStyle(
+      fontFamily: 'Ahem',
+      fontSize: 48,
+      height: 1,
+      color: Colors.black,
+    );
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: SizedBox(
+          width: 180,
+          height: 120,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: ReelText(text, options: options, style: style),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(''));
+    await tester.pumpWidget(frame('A'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final slot = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+    );
+    final firstWidth = slot.size.width;
+    final firstPaintDx = (slot as dynamic).debugPreparedToFaceDx as double;
+    final firstCurrentDx = (slot as dynamic).debugCurrentToFaceDx as double;
+
+    expect(firstPaintDx, closeTo(firstCurrentDx, 0.01));
+
+    await tester.pump(const Duration(milliseconds: 60));
+
+    final secondPaintDx = (slot as dynamic).debugPreparedToFaceDx as double;
+    final secondCurrentDx = (slot as dynamic).debugCurrentToFaceDx as double;
+
+    expect(slot.size.width, greaterThan(firstWidth + 1));
+    expect((secondCurrentDx - firstCurrentDx).abs(), greaterThan(1));
+    expect(
+      secondPaintDx,
+      closeTo(secondCurrentDx, 0.01),
+    );
+  });
+
   testWidgets('inserted glyph widths expand during a roll', (tester) async {
     const reelKey = ValueKey('reel_interpolated_width');
     const style = TextStyle(
