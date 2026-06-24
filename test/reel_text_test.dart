@@ -1040,6 +1040,92 @@ void main() {
     expect(rollingWidth, lessThan(toWidth));
   });
 
+  testWidgets('painted rolling slots report intrinsic size during a roll', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_intrinsic_width_roll');
+    const style = TextStyle(fontFamily: 'Ahem', fontSize: 24, height: 1);
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 200),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      curve: Curves.linear,
+      bounce: 0,
+      skipUnchanged: false,
+    );
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: IntrinsicWidth(
+            child: ReelText(
+              text,
+              key: reelKey,
+              style: style,
+              options: options,
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(''));
+    await tester.pumpWidget(frame('A'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(tester.takeException(), isNull);
+
+    final slotSize = tester.getSize(
+      find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+    );
+    final reelSize = tester.getSize(find.byKey(reelKey));
+
+    expect(slotSize.width, greaterThan(0));
+    expect(reelSize.width, closeTo(slotSize.width, 0.01));
+    expect(reelSize.height, closeTo(slotSize.height, 0.01));
+  });
+
+  testWidgets('painted rolling slots dispose text painters', (tester) async {
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 160),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      curve: Curves.linear,
+      bounce: 0,
+      color: Colors.blue,
+      skipUnchanged: false,
+    );
+
+    Widget frame(String text) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText(text, options: options, style: _textStyle(32)),
+      );
+    }
+
+    await tester.pumpWidget(frame('A'));
+    await tester.pumpWidget(frame('B'));
+    await tester.pump();
+
+    final slot = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+    );
+
+    expect(_debugPreparedFaceLayoutCount(slot), greaterThan(0));
+    expect(
+      (slot as dynamic).debugDisposedTransientFaceLayoutCount as int,
+      greaterThan(0),
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    expect(
+      (slot as dynamic).debugDisposedPreparedFaceLayoutCount as int,
+      greaterThan(0),
+    );
+  });
+
   testWidgets('glyph faces get paint bleed without reserving width', (
     tester,
   ) async {

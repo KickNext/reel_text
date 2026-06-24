@@ -277,6 +277,8 @@ class _RenderRollingTextSlotFace extends RenderBox {
   _PreparedTextFace? _fromFace;
   _PreparedTextFace? _toFace;
   var _preparedFaceLayoutCount = 0;
+  var _disposedPreparedFaceLayoutCount = 0;
+  var _disposedTransientFaceLayoutCount = 0;
 
   _TokenSlotRenderData get data => _data;
 
@@ -356,6 +358,12 @@ class _RenderRollingTextSlotFace extends RenderBox {
 
   int get debugPreparedFaceLayoutCount => _preparedFaceLayoutCount;
 
+  int get debugDisposedPreparedFaceLayoutCount =>
+      _disposedPreparedFaceLayoutCount;
+
+  int get debugDisposedTransientFaceLayoutCount =>
+      _disposedTransientFaceLayoutCount;
+
   double get debugPreparedToFaceDx =>
       _toFace == null ? double.nan : _faceDxFor(_toFace!.width);
 
@@ -417,7 +425,14 @@ class _RenderRollingTextSlotFace extends RenderBox {
   @override
   void detach() {
     _animation.removeListener(_handleAnimationTick);
+    _clearPreparedFaces();
     super.detach();
+  }
+
+  @override
+  void dispose() {
+    _clearPreparedFaces();
+    super.dispose();
   }
 
   void _handleAnimationTick() {
@@ -437,7 +452,28 @@ class _RenderRollingTextSlotFace extends RenderBox {
 
   @override
   void performLayout() {
-    size = constraints.constrain(
+    size = _layoutSizeFor(constraints);
+  }
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    return _layoutSizeFor(constraints);
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _currentWidth;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => _currentWidth;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _data.metrics.height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => _data.metrics.height;
+
+  Size _layoutSizeFor(BoxConstraints constraints) {
+    return constraints.constrain(
       Size(_currentWidth, _data.metrics.height),
     );
   }
@@ -595,39 +631,65 @@ class _RenderRollingTextSlotFace extends RenderBox {
       locale: _layout.locale,
       strutStyle: _layout.strutStyle,
       maxLines: 1,
-    )..layout(minWidth: paintWidth, maxWidth: paintWidth);
+    );
+    var savedCanvas = false;
+    var savedLayer = false;
+    try {
+      painter.layout(minWidth: paintWidth, maxWidth: paintWidth);
 
-    canvas.save();
-    canvas.translate(faceDx + width / 2, dy + height / 2);
-    if (angle != 0) {
-      canvas.rotate(angle);
+      canvas.save();
+      savedCanvas = true;
+      canvas.translate(faceDx + width / 2, dy + height / 2);
+      if (angle != 0) {
+        canvas.rotate(angle);
+      }
+      canvas.translate(-width / 2, -height / 2);
+
+      if (opacity < 0.999) {
+        canvas.saveLayer(
+          Rect.fromLTWH(paintDx, 0, paintWidth, height),
+          Paint()
+            ..color = Color.fromARGB(
+              (opacity.clamp(0.0, 1.0) * 255).round(),
+              255,
+              255,
+              255,
+            ),
+        );
+        savedLayer = true;
+      }
+
+      painter.paint(canvas, Offset(paintDx, 0));
+
+      if (savedLayer) {
+        canvas.restore();
+        savedLayer = false;
+      }
+    } finally {
+      if (savedLayer) {
+        canvas.restore();
+      }
+      if (savedCanvas) {
+        canvas.restore();
+      }
+      painter.dispose();
+      _disposedTransientFaceLayoutCount++;
     }
-    canvas.translate(-width / 2, -height / 2);
-
-    if (opacity < 0.999) {
-      canvas.saveLayer(
-        Rect.fromLTWH(paintDx, 0, paintWidth, height),
-        Paint()
-          ..color = Color.fromARGB(
-            (opacity.clamp(0.0, 1.0) * 255).round(),
-            255,
-            255,
-            255,
-          ),
-      );
-    }
-
-    painter.paint(canvas, Offset(paintDx, 0));
-
-    if (opacity < 0.999) {
-      canvas.restore();
-    }
-    canvas.restore();
   }
 
   void _clearPreparedFaces() {
+    _disposedPreparedFaceLayoutCount +=
+        _disposePreparedFace(_fromFace) + _disposePreparedFace(_toFace);
     _fromFace = null;
     _toFace = null;
+  }
+
+  int _disposePreparedFace(_PreparedTextFace? face) {
+    if (face == null) {
+      return 0;
+    }
+    face.dispose();
+    return 1;
   }
 
   double _faceDxFor(double width) {
@@ -659,6 +721,10 @@ class _PreparedTextFace {
   final double height;
   final double paintWidth;
   final double paintDx;
+
+  void dispose() {
+    painter.dispose();
+  }
 }
 
 class _VerticalSlotClipper extends CustomClipper<Rect> {
