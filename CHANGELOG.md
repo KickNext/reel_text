@@ -1,3 +1,11 @@
+## 0.4.1
+
+- Fixed vertical alignment for `ReelTextEditingController` replacements inside
+  `EditableText` and `TextField`, including active rolling replacements that
+  rely on Flutter's dry layout and baseline placeholder metrics.
+- Preserved the surrounding editable text strut for inline replacement widgets.
+- No public API changes.
+
 ## 0.4.0
 
 - Reworked plain rolling text slots to paint through cached render objects,

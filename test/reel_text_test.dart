@@ -165,6 +165,112 @@ void main() {
     );
   });
 
+  testWidgets('settled layout exposes Text-like alphabetic baseline', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_baseline_reel');
+    const textKey = ValueKey('reel_baseline_text');
+    const text = 'Invite copied';
+    const style = TextStyle(fontSize: 13, height: 1);
+    const strut = StrutStyle(fontSize: 13, height: 1, forceStrutHeight: true);
+
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(text, key: textKey, style: style, strutStyle: strut),
+            ReelText(text, key: reelKey, style: style, strutStyle: strut),
+          ],
+        ),
+      ),
+    );
+
+    expect(
+      tester.getTopLeft(find.byKey(reelKey)).dy,
+      tester.getTopLeft(find.byKey(textKey)).dy,
+    );
+
+    final reelBox = tester.renderObject<RenderBox>(find.byKey(reelKey));
+    final textBox = tester.renderObject<RenderBox>(find.byKey(textKey));
+    final reelSize = tester.getSize(find.byKey(reelKey));
+    final textSize = tester.getSize(find.byKey(textKey));
+    final dryBaseline = reelBox.getDryBaseline(
+      BoxConstraints.tight(reelSize),
+      TextBaseline.alphabetic,
+    );
+    final textDryBaseline = textBox.getDryBaseline(
+      BoxConstraints.tight(textSize),
+      TextBaseline.alphabetic,
+    );
+    expect(dryBaseline, closeTo(textDryBaseline!, 0.001));
+  });
+
+  testWidgets('rolling layout exposes Text-like alphabetic baseline', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_rolling_baseline_reel');
+    const textKey = ValueKey('reel_rolling_baseline_text');
+    const style = TextStyle(fontSize: 13, height: 1);
+    const strut = StrutStyle(fontSize: 13, height: 1, forceStrutHeight: true);
+    final controller = ReelTextController(initialText: 'Cart updated');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            const Text(
+              'Invite copied',
+              key: textKey,
+              style: style,
+              strutStyle: strut,
+            ),
+            ReelText.controller(
+              key: reelKey,
+              controller: controller,
+              style: style,
+              strutStyle: strut,
+              options: const ReelTextOptions(
+                duration: Duration(milliseconds: 120),
+                stagger: Duration.zero,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    controller.set('Invite copied');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byKey(reelKey)).dy,
+      tester.getTopLeft(find.byKey(textKey)).dy,
+    );
+
+    final reelBox = tester.renderObject<RenderBox>(find.byKey(reelKey));
+    final textBox = tester.renderObject<RenderBox>(find.byKey(textKey));
+    final reelSize = tester.getSize(find.byKey(reelKey));
+    final textSize = tester.getSize(find.byKey(textKey));
+    final dryBaseline = reelBox.getDryBaseline(
+      BoxConstraints.tight(reelSize),
+      TextBaseline.alphabetic,
+    );
+    final textDryBaseline = textBox.getDryBaseline(
+      BoxConstraints.tight(textSize),
+      TextBaseline.alphabetic,
+    );
+    expect(dryBaseline, closeTo(textDryBaseline!, 0.001));
+  });
+
   testWidgets('settled glyph subtree is reused across parent rebuilds', (
     tester,
   ) async {
@@ -2857,6 +2963,45 @@ void main() {
       expect(controller.replacementText(), 'Fix the typo.');
     },
   );
+
+  testWidgets(
+      'editing controller preserves EditableText strut for replacements', (
+    tester,
+  ) async {
+    const inlineKey = ValueKey('inline_strut_replacement');
+    const strut = StrutStyle(fontSize: 13, height: 1, forceStrutHeight: true);
+    final controller = ReelTextEditingController(text: 'Invite copied');
+    final focusNode = FocusNode();
+    addTearDown(controller.dispose);
+    addTearDown(focusNode.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EditableText(
+          controller: controller,
+          focusNode: focusNode,
+          style: const TextStyle(fontSize: 13, height: 1),
+          strutStyle: strut,
+          cursorColor: Colors.green,
+          backgroundCursorColor: Colors.black,
+        ),
+      ),
+    );
+
+    controller.beginReplacements([
+      const ReelTextEditReplacement(
+        range: TextRange(start: 0, end: 13),
+        replacement: 'Export ready',
+        key: inlineKey,
+      ),
+    ]);
+    await tester.pump();
+
+    final inlineReplacement = tester.widget<ReelText>(find.byKey(inlineKey));
+    expect(inlineReplacement.strutStyle?.fontSize, strut.fontSize);
+    expect(inlineReplacement.strutStyle?.height, strut.height);
+    expect(inlineReplacement.strutStyle?.forceStrutHeight, isTrue);
+  });
 
   testWidgets('editing controller spanBuilder customizes resting text', (
     tester,

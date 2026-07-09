@@ -127,6 +127,26 @@ class _RenderSettledTokenRowViewport extends RenderShiftedBox {
       ),
     );
   }
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    final child = this.child;
+    if (child == null) {
+      return constraints.constrain(Size(0, height));
+    }
+
+    final childSize = child.getDryLayout(
+      const BoxConstraints(
+        minWidth: 0,
+        maxWidth: double.infinity,
+        minHeight: 0,
+        maxHeight: double.infinity,
+      ),
+    );
+    return constraints.constrain(
+      Size(childSize.width, math.max(height, childSize.height)),
+    );
+  }
 }
 
 class _RollingReelText extends StatelessWidget {

@@ -117,7 +117,7 @@ class _EditorPageState extends State<EditorPage> {
           style: Studio.mono(
             size: 13,
             color: Studio.text,
-            height: 1.1,
+            height: 1,
             weight: FontWeight.w700,
           ),
         ),

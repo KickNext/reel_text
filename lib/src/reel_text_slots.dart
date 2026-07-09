@@ -77,6 +77,14 @@ class _RollingTokenSlot extends StatelessWidget {
         fromWidth: fromRun.widthFor(slot.from),
         toWidth: toRun.widthFor(slot.to),
         height: math.max(fromRun.height, toRun.height),
+        alphabeticBaseline: math.max(
+          fromRun.metrics.alphabeticBaseline,
+          toRun.metrics.alphabeticBaseline,
+        ),
+        ideographicBaseline: math.max(
+          fromRun.metrics.ideographicBaseline,
+          toRun.metrics.ideographicBaseline,
+        ),
       ),
     );
     if (!slot.changed) {
@@ -471,6 +479,19 @@ class _RenderRollingTextSlotFace extends RenderBox {
 
   @override
   double computeMaxIntrinsicHeight(double width) => _data.metrics.height;
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) {
+    return _data.metrics.baselineFor(baseline);
+  }
+
+  @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) {
+    return _data.metrics.baselineFor(baseline);
+  }
 
   Size _layoutSizeFor(BoxConstraints constraints) {
     return constraints.constrain(
