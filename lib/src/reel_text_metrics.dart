@@ -337,11 +337,22 @@ class _SlotMetrics {
     required this.fromWidth,
     required this.toWidth,
     required this.height,
+    required this.alphabeticBaseline,
+    required this.ideographicBaseline,
   });
 
   final double fromWidth;
   final double toWidth;
   final double height;
+  final double alphabeticBaseline;
+  final double ideographicBaseline;
+
+  double baselineFor(TextBaseline baseline) {
+    return switch (baseline) {
+      TextBaseline.ideographic => ideographicBaseline,
+      TextBaseline.alphabetic => alphabeticBaseline,
+    };
+  }
 }
 
 Alignment _inlineStartAlignment(TextDirection textDirection) {

@@ -1297,6 +1297,8 @@ void main() {
     );
     expect(targetReplacement.controller!.value, 'Export ready');
     expect(targetReplacement.options.direction, ReelTextDirection.down);
+    expect(targetReplacement.style?.height, 1);
+    expect(targetReplacement.strutStyle?.forceStrutHeight, isTrue);
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('editor_target_replacement')),
@@ -1339,6 +1341,43 @@ void main() {
     await tester.pump(const Duration(milliseconds: 16));
     expect(find.byKey(const ValueKey('reel_text_rolling')), findsWidgets);
     expect(preview.controller!.value, 'Export ready');
+  });
+
+  testWidgets('editor target input keeps height while animating target chips', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('page_tab_editor')));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final input = find.byKey(const ValueKey('editor_target_input'));
+    final editable = find.descendant(
+      of: input,
+      matching: find.byType(EditableText),
+    );
+    final restingHeight = tester.getSize(editable).height;
+
+    await tester.tap(find.byKey(const ValueKey('editor_target_invite_copied')));
+    await tester.pump();
+    final replacementHeight = tester.getSize(editable).height;
+    final targetReplacement = tester.widget<ReelText>(
+      find.byKey(const ValueKey('editor_target_replacement')),
+    );
+    expect(targetReplacement.strutStyle?.forceStrutHeight, isTrue);
+    expect(replacementHeight, restingHeight);
+
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsWidgets);
+    expect(tester.getSize(editable).height, restingHeight);
+
+    await tester.pumpAndSettle();
+    expect(tester.getSize(editable).height, restingHeight);
   });
 
   testWidgets('editor light theme primary controls use white foreground', (

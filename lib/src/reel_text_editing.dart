@@ -231,6 +231,7 @@ class ReelTextEditingController extends TextEditingController {
     }
 
     final baseStyle = style ?? const TextStyle();
+    final strutStyle = _editableTextStrutStyleOf(context);
     final children = <InlineSpan>[];
     var cursor = 0;
     for (final active in _activeReplacements) {
@@ -252,6 +253,7 @@ class ReelTextEditingController extends TextEditingController {
             style: replacement.style == null
                 ? baseStyle
                 : baseStyle.merge(replacement.style),
+            strutStyle: strutStyle,
           ),
         ),
       );
@@ -274,6 +276,14 @@ class ReelTextEditingController extends TextEditingController {
     _autoCommitTimer?.cancel();
     _autoCommitTimer = null;
   }
+}
+
+StrutStyle? _editableTextStrutStyleOf(BuildContext context) {
+  final widget = context.widget;
+  if (widget is EditableText) {
+    return widget.strutStyle;
+  }
+  return context.findAncestorWidgetOfExactType<EditableText>()?.strutStyle;
 }
 
 class _ActiveReelTextReplacement {
