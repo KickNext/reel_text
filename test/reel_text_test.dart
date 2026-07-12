@@ -48,6 +48,80 @@ void main() {
     expect(plain.reversed().direction, ReelTextDirection.down);
   });
 
+  test('animation options reject negative durations', () {
+    final controller = ReelTextController(initialText: 'One');
+    addTearDown(controller.dispose);
+
+    expect(
+      () => controller.set(
+        'Two',
+        options: const ReelTextOptions(
+          stagger: Duration(microseconds: -1),
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => controller.set(
+        'Two',
+        options: const ReelTextOptions(
+          duration: Duration(microseconds: -1),
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => controller.set(
+        'Two',
+        options: const ReelTextOptions(
+          exitOffset: Duration(microseconds: -1),
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => controller.set(
+        'Two',
+        options: const ReelTextOptions(
+          colorFade: Duration(microseconds: -1),
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => controller.flash(
+        'Two',
+        options: const ReelTextFlashOptions(
+          revertAfter: Duration(microseconds: -1),
+        ),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('controller progress rejects non-positive intervals', () {
+    final controller = ReelTextController(initialText: 'One');
+    addTearDown(controller.dispose);
+    expect(
+      () => controller.startProgress('One', interval: Duration.zero),
+      throwsArgumentError,
+    );
+  });
+
+  testWidgets('sequence rejects non-positive intervals', (tester) async {
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText.sequence(
+          values: ['One', 'Two'],
+          interval: Duration.zero,
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isArgumentError);
+  });
+
   testWidgets('renders settled text without animation on first build', (
     tester,
   ) async {
@@ -3685,6 +3759,53 @@ void main() {
     expect(find.bySemanticsLabel('one'), findsNothing);
     expect(find.bySemanticsLabel('two'), findsNothing);
     expect(find.bySemanticsLabel('three'), findsNothing);
+  });
+
+  testWidgets('switching controllers discards the previous pending target', (
+    tester,
+  ) async {
+    final first = ReelTextController(initialText: 'first');
+    final second = ReelTextController(initialText: 'second');
+    addTearDown(first.dispose);
+    addTearDown(second.dispose);
+    var active = first;
+    late StateSetter rebuild;
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            rebuild = setState;
+            return ReelText.controller(controller: active);
+          },
+        ),
+      ),
+    );
+
+    const queuedOptions = ReelTextOptions(
+      duration: Duration(milliseconds: 80),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      interrupt: false,
+    );
+    first.set('first-active', options: queuedOptions);
+    first.set('first-stale', options: queuedOptions);
+
+    rebuild(() => active = second);
+    await tester.pump();
+    second.set(
+      'second-final',
+      options: const ReelTextOptions(
+        duration: Duration(milliseconds: 20),
+        stagger: Duration.zero,
+        exitOffset: Duration.zero,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('second-final'), findsOneWidget);
+    expect(find.bySemanticsLabel('first-stale'), findsNothing);
   });
 
   testWidgets('controller set cancels a pending flash revert', (tester) async {

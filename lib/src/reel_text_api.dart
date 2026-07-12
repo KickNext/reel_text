@@ -306,3 +306,29 @@ ReelTextColorBuilder chromatic({
     return HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
   };
 }
+
+void _validateReelTextOptions(ReelTextOptions options) {
+  _requireNonNegativeDuration(options.stagger, 'options.stagger');
+  _requireNonNegativeDuration(options.duration, 'options.duration');
+  _requireNonNegativeDuration(options.exitOffset, 'options.exitOffset');
+  _requireNonNegativeDuration(options.colorFade, 'options.colorFade');
+  if (!options.bounce.isFinite || options.bounce < 0) {
+    throw ArgumentError.value(
+      options.bounce,
+      'options.bounce',
+      'must be finite and non-negative',
+    );
+  }
+}
+
+void _requireNonNegativeDuration(Duration value, String name) {
+  if (value.isNegative) {
+    throw ArgumentError.value(value, name, 'must not be negative');
+  }
+}
+
+void _requirePositiveDuration(Duration value, String name) {
+  if (value <= Duration.zero) {
+    throw ArgumentError.value(value, name, 'must be greater than zero');
+  }
+}

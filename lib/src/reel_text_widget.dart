@@ -205,6 +205,7 @@ class _ReelTextState extends State<ReelText>
       _displayedFrame = _effectiveFrame;
       _targetFrame = null;
       _roll = null;
+      _pending = null;
       _controller.stop();
     } else if (widget.controller == null &&
         (oldWidget.text != widget.text ||
@@ -245,6 +246,7 @@ class _ReelTextState extends State<ReelText>
     if (values == null || values.length < 2) {
       return;
     }
+    _requirePositiveDuration(widget._sequenceInterval!, 'interval');
     _sequenceTimer = Timer.periodic(widget._sequenceInterval!, (_) {
       if (!mounted) {
         return;
@@ -273,6 +275,7 @@ class _ReelTextState extends State<ReelText>
     InlineSpan? richText,
     bool force = false,
   }) {
+    _validateReelTextOptions(options);
     final targetFrame = _ReelTextFrame(text, richText);
     if (_animationsDisabled) {
       _controller.stop();
@@ -355,6 +358,7 @@ class _ReelTextState extends State<ReelText>
 
   @override
   Widget build(BuildContext context) {
+    _validateReelTextOptions(widget.options);
     final direction = widget.textDirection ??
         Directionality.maybeOf(context) ??
         TextDirection.ltr;
