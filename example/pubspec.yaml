@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.3.0
-  google_fonts: ^8.1.0
+  google_fonts: ^8.2.0
   http: ^1.6.0
   reel_text:
     path: ..
