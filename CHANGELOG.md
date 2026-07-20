@@ -1,3 +1,16 @@
+## 0.4.2
+
+- Discarded transitions queued by a previous `ReelTextController` when a
+  `ReelText` widget switches controllers, preventing stale targets from being
+  applied later.
+- Validated animation durations, waiting intervals, and bounce values before
+  mutating controller state, with consistent `ArgumentError` failures for
+  invalid input.
+- Disposed temporary `TextPainter` instances after text-run measurement on
+  both success and exception paths.
+- Updated the example app to `google_fonts` 8.2.0.
+- No public API changes.
+
 ## 0.4.1
 
 - Fixed vertical alignment for `ReelTextEditingController` replacements inside
