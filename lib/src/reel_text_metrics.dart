@@ -193,65 +193,69 @@ class _TextRunMetrics {
       strutStyle: layout.strutStyle,
       maxLines: 1,
     );
-    painter.setPlaceholderDimensions(
-      _placeholderDimensionsFor(content, layout.widgetSpanMetricsFor),
-    );
-    painter.layout();
+    try {
+      painter.setPlaceholderDimensions(
+        _placeholderDimensionsFor(content, layout.widgetSpanMetricsFor),
+      );
+      painter.layout();
 
-    final tokens = content.tokens;
-    final offsets = <int>[0];
-    var offset = 0;
-    for (final token in tokens) {
-      offset += token.text.length;
-      offsets.add(offset);
-    }
-
-    final widths = <double>[];
-    final visualLefts = <double>[];
-    for (var i = 0; i < tokens.length; i++) {
-      final bounds = _tokenBounds(painter, offsets[i], offsets[i + 1]);
-      widths.add(bounds.width);
-      visualLefts.add(bounds.left);
-    }
-
-    final measured = widths.fold<double>(0, (sum, width) => sum + width);
-    if (widths.isNotEmpty && (measured - painter.size.width).abs() > 1e-9) {
-      final index = widths.lastIndexWhere((width) => width > 0);
-      if (index >= 0) {
-        widths[index] = math.max(
-          0,
-          widths[index] + painter.size.width - measured,
-        );
+      final tokens = content.tokens;
+      final offsets = <int>[0];
+      var offset = 0;
+      for (final token in tokens) {
+        offset += token.text.length;
+        offsets.add(offset);
       }
-    }
 
-    final totalWidth = widths.fold<double>(0, (sum, width) => sum + width);
-    final visualOrder = [for (var i = 0; i < tokens.length; i++) i]
-      ..sort((a, b) {
-        final byLeft = visualLefts[a].compareTo(visualLefts[b]);
-        if (byLeft != 0) {
-          return byLeft;
+      final widths = <double>[];
+      final visualLefts = <double>[];
+      for (var i = 0; i < tokens.length; i++) {
+        final bounds = _tokenBounds(painter, offsets[i], offsets[i + 1]);
+        widths.add(bounds.width);
+        visualLefts.add(bounds.left);
+      }
+
+      final measured = widths.fold<double>(0, (sum, width) => sum + width);
+      if (widths.isNotEmpty && (measured - painter.size.width).abs() > 1e-9) {
+        final index = widths.lastIndexWhere((width) => width > 0);
+        if (index >= 0) {
+          widths[index] = math.max(
+            0,
+            widths[index] + painter.size.width - measured,
+          );
         }
-        final byRight = (visualLefts[a] + widths[a]).compareTo(
-          visualLefts[b] + widths[b],
-        );
-        if (byRight != 0) {
-          return byRight;
-        }
-        return a.compareTo(b);
-      });
-    return _TextRunMetrics(
-      widths: widths,
-      visualOrder: visualOrder,
-      width: totalWidth,
-      height: painter.size.height,
-      alphabeticBaseline: painter.computeDistanceToActualBaseline(
-        TextBaseline.alphabetic,
-      ),
-      ideographicBaseline: painter.computeDistanceToActualBaseline(
-        TextBaseline.ideographic,
-      ),
-    );
+      }
+
+      final totalWidth = widths.fold<double>(0, (sum, width) => sum + width);
+      final visualOrder = [for (var i = 0; i < tokens.length; i++) i]
+        ..sort((a, b) {
+          final byLeft = visualLefts[a].compareTo(visualLefts[b]);
+          if (byLeft != 0) {
+            return byLeft;
+          }
+          final byRight = (visualLefts[a] + widths[a]).compareTo(
+            visualLefts[b] + widths[b],
+          );
+          if (byRight != 0) {
+            return byRight;
+          }
+          return a.compareTo(b);
+        });
+      return _TextRunMetrics(
+        widths: widths,
+        visualOrder: visualOrder,
+        width: totalWidth,
+        height: painter.size.height,
+        alphabeticBaseline: painter.computeDistanceToActualBaseline(
+          TextBaseline.alphabetic,
+        ),
+        ideographicBaseline: painter.computeDistanceToActualBaseline(
+          TextBaseline.ideographic,
+        ),
+      );
+    } finally {
+      painter.dispose();
+    }
   }
 
   static double _caretDx(TextPainter painter, int offset) {

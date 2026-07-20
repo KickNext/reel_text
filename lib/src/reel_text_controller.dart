@@ -19,6 +19,9 @@ class ReelTextController extends ChangeNotifier {
 
   /// Permanently rolls to [text] and cancels any pending flash revert.
   void set(String text, {ReelTextOptions? options}) {
+    if (options != null) {
+      _validateReelTextOptions(options);
+    }
     _cancelFlash();
     _cancelProgress();
     _emit(text, options);
@@ -31,22 +34,23 @@ class ReelTextController extends ChangeNotifier {
     String text, {
     ReelTextFlashOptions options = const ReelTextFlashOptions(),
   }) {
+    _requireNonNegativeDuration(options.revertAfter, 'options.revertAfter');
+    final enterOptions =
+        (options.enter ?? const ReelTextOptions()).copyWith(interrupt: false);
+    final exitOptions =
+        (options.exit ?? const ReelTextOptions()).copyWith(interrupt: false);
+    _validateReelTextOptions(enterOptions);
+    _validateReelTextOptions(exitOptions);
     _cancelProgress();
     _restingText ??= _value;
-    _emit(
-      text,
-      (options.enter ?? const ReelTextOptions()).copyWith(interrupt: false),
-    );
+    _emit(text, enterOptions);
 
     _revertTimer?.cancel();
     _revertTimer = Timer(options.revertAfter, () {
       final back = _restingText!;
       _restingText = null;
       _revertTimer = null;
-      _emit(
-        back,
-        (options.exit ?? const ReelTextOptions()).copyWith(interrupt: false),
-      );
+      _emit(back, exitOptions);
     });
   }
 
@@ -66,6 +70,9 @@ class ReelTextController extends ChangeNotifier {
     Duration? interval,
     bool animateUnchanged = false,
   }) {
+    if (interval != null) {
+      _requirePositiveDuration(interval, 'interval');
+    }
     final sequence = frames.isEmpty
         ? <String>[text]
         : frames.first == text
@@ -75,6 +82,7 @@ class ReelTextController extends ChangeNotifier {
       interrupt: false,
       skipUnchanged: !animateUnchanged,
     );
+    _validateReelTextOptions(progressOptions);
     final tickInterval = interval ??
         Duration(
           milliseconds: (progressOptions.duration.inMilliseconds * 0.55)
@@ -132,9 +140,18 @@ class ReelTextController extends ChangeNotifier {
     ReelWaiting waiting = const ReelWaiting.ellipsis(),
     ReelTextOptions? options,
   }) {
+    final step = waiting.step;
+    if (step != null) {
+      _requirePositiveDuration(step, 'waiting.step');
+    }
+    _requireNonNegativeDuration(waiting.rest, 'waiting.rest');
+    final base = options ??
+        (waiting._kind == _ReelWaitingKind.wave
+            ? _waveWaitingDefaults
+            : _tickWaitingDefaults);
+    _validateReelTextOptions(base);
     switch (waiting._kind) {
       case _ReelWaitingKind.ellipsis:
-        final base = options ?? _tickWaitingDefaults;
         return startProgress(
           text,
           frames: <String>[
@@ -144,7 +161,6 @@ class ReelTextController extends ChangeNotifier {
           options: base,
         );
       case _ReelWaitingKind.wave:
-        final base = options ?? _waveWaitingDefaults;
         final glyphCount = math.max(1, text.characters.length);
         final sweepMs = (glyphCount - 1) * base.stagger.inMilliseconds +
             base.exitOffset.inMilliseconds +
@@ -160,7 +176,6 @@ class ReelTextController extends ChangeNotifier {
           options: base,
         );
       case _ReelWaitingKind.frames:
-        final base = options ?? _tickWaitingDefaults;
         return startProgress(
           text,
           frames: waiting.frames,
@@ -168,7 +183,6 @@ class ReelTextController extends ChangeNotifier {
           options: base,
         );
       case _ReelWaitingKind.builder:
-        final base = options ?? _tickWaitingDefaults;
         final frame = waiting.frameBuilder!;
         return _startFrameLoop(
           initial: frame(text, 0),
@@ -177,7 +191,6 @@ class ReelTextController extends ChangeNotifier {
           options: base.copyWith(interrupt: false),
         );
       case _ReelWaitingKind.scramble:
-        final base = options ?? _tickWaitingDefaults;
         return _startFrameLoop(
           initial: text,
           frameAt: (tick) => _scrambleFrame(text, tick, waiting),
@@ -290,6 +303,9 @@ class ReelTextController extends ChangeNotifier {
     if (!_isProgressActive(epoch)) {
       return;
     }
+    if (options != null) {
+      _validateReelTextOptions(options);
+    }
     _cancelProgress();
     _emit(text, options);
   }
@@ -301,6 +317,9 @@ class ReelTextController extends ChangeNotifier {
   }) {
     if (!_isProgressActive(epoch)) {
       return;
+    }
+    if (text != null && options != null) {
+      _validateReelTextOptions(options);
     }
     _cancelProgress();
     if (text != null) {
@@ -325,6 +344,9 @@ class ReelTextController extends ChangeNotifier {
   }
 
   void _emit(String text, ReelTextOptions? options, {bool force = false}) {
+    if (options != null) {
+      _validateReelTextOptions(options);
+    }
     _value = text;
     _command = _ReelTextCommand(text, options, force: force);
     notifyListeners();
