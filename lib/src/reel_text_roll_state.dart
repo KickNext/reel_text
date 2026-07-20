@@ -34,25 +34,17 @@ class _ReelTextFrame {
   }
 }
 
-class _PendingRoll {
-  const _PendingRoll(this.frame, this.options, {this.force = false});
+typedef _PendingRoll = ({
+  _ReelTextFrame frame,
+  ReelTextOptions options,
+  bool force,
+});
 
-  final _ReelTextFrame frame;
-  final ReelTextOptions options;
-  final bool force;
-}
-
-class _MeasuredReelTextFrame {
-  const _MeasuredReelTextFrame({
-    required this.frame,
-    required this.content,
-    required this.run,
-  });
-
-  final _ReelTextFrame frame;
-  final _ReelTextContent content;
-  final _MeasuredReelTextRun run;
-}
+typedef _MeasuredReelTextFrame = ({
+  _ReelTextFrame frame,
+  _ReelTextContent content,
+  _MeasuredReelTextRun run,
+});
 
 class _SettledReelTextCache {
   const _SettledReelTextCache({
@@ -110,16 +102,9 @@ class _SettledReelTextCacheKey {
       );
 }
 
-class _ActiveRoll {
-  const _ActiveRoll({
-    required this.from,
-    required this.to,
-    required this.options,
-    required this.plan,
-  });
-
-  final _MeasuredReelTextFrame from;
-  final _MeasuredReelTextFrame to;
-  final ReelTextOptions options;
-  final _RollPlan plan;
-}
+typedef _ActiveRoll = ({
+  _MeasuredReelTextFrame from,
+  _MeasuredReelTextFrame to,
+  ReelTextOptions options,
+  _RollPlan plan,
+});

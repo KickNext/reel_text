@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 const _packagePubspecAsset = 'packages/reel_text/pubspec.yaml';
 
-Future<String> _loadPackageVersionLabel() async {
+Future<String> loadPackageVersionLabel() async {
   try {
     final pubspec = await rootBundle.loadString(_packagePubspecAsset);
     final version = RegExp(
@@ -576,7 +576,7 @@ class StudioFooter extends StatefulWidget {
 }
 
 class _StudioFooterState extends State<StudioFooter> {
-  late final Future<String> _version = _loadPackageVersionLabel();
+  late final Future<String> _version = loadPackageVersionLabel();
   late final int _year = DateTime.now().year;
 
   @override

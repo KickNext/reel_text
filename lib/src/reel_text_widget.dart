@@ -261,7 +261,7 @@ class _ReelTextState extends State<ReelText>
   }
 
   bool _sequenceConfigChanged(ReelText oldWidget) {
-    return !_sameStringList(
+    return !listEquals(
           oldWidget._sequenceValues,
           widget._sequenceValues,
         ) ||
@@ -293,7 +293,7 @@ class _ReelTextState extends State<ReelText>
       if (force ||
           currentTarget == null ||
           !_sameFrameTarget(currentTarget, targetFrame)) {
-        _pending = _PendingRoll(targetFrame, options, force: force);
+        _pending = (frame: targetFrame, options: options, force: force);
       }
       return;
     }
@@ -522,7 +522,7 @@ class _ReelTextState extends State<ReelText>
       alignVisualOrderFromEnd: direction == TextDirection.rtl,
     );
 
-    return _ActiveRoll(
+    return (
       from: from,
       to: to,
       options: options,
@@ -536,7 +536,7 @@ class _ReelTextState extends State<ReelText>
     _ReelTextLayoutContext layout,
   ) {
     final content = frame.contentFor(style);
-    return _MeasuredReelTextFrame(
+    return (
       frame: frame,
       content: content,
       run: _measuredRunFor(content, layout),
@@ -556,21 +556,6 @@ class _ReelTextState extends State<ReelText>
 
 bool _sameFrameTarget(_ReelTextFrame a, _ReelTextFrame b) {
   return a.text == b.text && identical(a.richText, b.richText);
-}
-
-bool _sameStringList(List<String>? a, List<String>? b) {
-  if (identical(a, b)) {
-    return true;
-  }
-  if (a == null || b == null || a.length != b.length) {
-    return false;
-  }
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) {
-      return false;
-    }
-  }
-  return true;
 }
 
 String? _firstSequenceValue(List<String>? values) {

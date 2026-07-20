@@ -90,7 +90,7 @@ void main() {
     expect(find.byKey(const ValueKey('page_tab_home')), findsOneWidget);
     expect(find.byKey(const ValueKey('page_tab_recipes')), findsOneWidget);
     expect(find.byKey(const ValueKey('page_tab_editor')), findsOneWidget);
-    expect(find.byKey(const ValueKey('page_tab_performance')), findsOneWidget);
+    expect(find.byKey(const ValueKey('page_tab_performance')), findsNothing);
     expect(
       find.byKey(const ValueKey('app_bar_metadata_links')),
       findsOneWidget,
@@ -121,251 +121,6 @@ void main() {
       find.byKey(const ValueKey('hero_brand_word')),
     );
     expect(heroLine.controller!.value, '1,024');
-  });
-
-  testWidgets('performance page shows a full-screen reel stress scene', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
-    );
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(find.byKey(const ValueKey('page_tab_performance')), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('page_tab_performance')));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    final scene = find.byKey(const ValueKey('performance_scene'));
-    final body = find.byKey(const ValueKey('shell_body_frame'));
-
-    expect(scene, findsOneWidget);
-    expect(tester.getSize(scene), tester.getSize(body));
-    expect(
-      _decoratedBoxColor(tester, 'performance_backdrop'),
-      const Color(0xff030711),
-    );
-    expect(
-      find.byKey(const ValueKey('performance_checkerboard')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const ValueKey('performance_edge_fade')), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('performance_reel_tile_0')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('performance_text_tile_1')),
-      findsOneWidget,
-    );
-    final firstClip = find.byKey(const ValueKey('performance_tile_clip_0'));
-    expect(firstClip, findsOneWidget);
-    expect(find.text('reel -> text'), findsNothing);
-    expect(find.text('text -> reel'), findsNothing);
-
-    final reelTile = tester.widget<ReelText>(
-      find.byKey(const ValueKey('performance_tile_0')),
-    );
-    expect(reelTile.style?.color, Studio.white);
-    expect(reelTile.options.duration, const Duration(milliseconds: 560));
-    expect(reelTile.options.stagger, const Duration(milliseconds: 38));
-    expect(reelTile.options.exitOffset, const Duration(milliseconds: 50));
-    expect(reelTile.options.bounce, 0.12);
-    expect(reelTile.options.color, isNull);
-    expect(reelTile.options.colorBuilder, isNotNull);
-    expect(tester.getSize(firstClip).width, greaterThan(0));
-    expect(tester.getSize(firstClip).height, greaterThan(0));
-    expect(
-      tester.getSize(firstClip).width,
-      lessThan(tester.getSize(scene).width),
-    );
-    expect(
-      tester.getSize(firstClip).height,
-      lessThan(tester.getSize(scene).height),
-    );
-
-    final textTile = tester.widget<ReelText>(
-      find.byKey(const ValueKey('performance_tile_1')),
-    );
-    expect(textTile.style?.color, Studio.white);
-    expect(textTile.options.color, Studio.sky);
-    expect(textTile.options.colorBuilder, isNull);
-
-    await tester.pump(const Duration(milliseconds: 1450));
-
-    expect(
-      find.descendant(
-        of: scene,
-        matching: find.byKey(const ValueKey('reel_text_rolling')),
-      ),
-      findsWidgets,
-    );
-  });
-
-  testWidgets('performance page follows dark and light theme palettes', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
-    );
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byKey(const ValueKey('page_tab_performance')));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(
-      _decoratedBoxColor(tester, 'performance_backdrop'),
-      const Color(0xff030711),
-    );
-    expect(
-      tester
-          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_0')))
-          .style
-          ?.color,
-      Studio.white,
-    );
-
-    await tester.tap(find.byKey(const ValueKey('theme_toggle_button')));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(
-      _decoratedBoxColor(tester, 'performance_backdrop'),
-      const Color(0xfff7fbff),
-    );
-    expect(
-      tester
-          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_0')))
-          .style
-          ?.color,
-      const Color(0xff15243a),
-    );
-    expect(
-      tester
-          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_1')))
-          .options
-          .color,
-      Studio.sky,
-    );
-  });
-
-  testWidgets('performance page density slider increases stress tile count', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
-    );
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byKey(const ValueKey('page_tab_performance')));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    final initialTiles = _performanceTileClipCount();
-    expect(initialTiles, 4);
-    expect(
-      find.text(
-        'This is a stress test, not a normal usage example. Each ReelText '
-        'in the grid is independent and animates separately, so high density '
-        'can visibly slow down.',
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('performance_density_slider')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('performance_chroma_switch')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('performance_color_switch')),
-      findsNothing,
-    );
-    expect(find.text('4 tiles'), findsOneWidget);
-    final densityLayer = find.byKey(
-      const ValueKey('performance_density_layer'),
-    );
-    expect(densityLayer, findsOneWidget);
-    expect(tester.getSize(densityLayer).width, lessThan(400));
-    expect(tester.getSize(densityLayer).height, lessThan(170));
-
-    expect(
-      tester
-          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_0')))
-          .options
-          .colorBuilder,
-      isNotNull,
-    );
-    expect(
-      tester
-          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_1')))
-          .options
-          .color,
-      Studio.sky,
-    );
-
-    final slider = tester.widget<Slider>(
-      find.byKey(const ValueKey('performance_density_slider')),
-    );
-    final maxTiles = _performanceMaxTileCount(
-      tester.getSize(find.byKey(const ValueKey('performance_scene'))),
-    );
-    expect(slider.max, maxTiles);
-
-    slider.onChanged!(maxTiles);
-    await tester.pump();
-
-    expect(_performanceTileClipCount(), maxTiles);
-    final firstTile = tester.getRect(
-      find.byKey(const ValueKey('performance_tile_clip_0')),
-    );
-    final secondTile = tester.getRect(
-      find.byKey(const ValueKey('performance_tile_clip_1')),
-    );
-    expect(secondTile.left - firstTile.right, greaterThanOrEqualTo(6));
-
-    final stressedTiles = _performanceTileClipCount();
-    await tester.tap(find.byKey(const ValueKey('theme_toggle_button')));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(
-      tester
-          .widget<Slider>(
-            find.byKey(const ValueKey('performance_density_slider')),
-          )
-          .value,
-      maxTiles,
-    );
-    expect(
-      find.byKey(const ValueKey('performance_chroma_switch')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('performance_color_switch')),
-      findsNothing,
-    );
-    expect(
-      tester
-          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_0')))
-          .options
-          .colorBuilder,
-      isNotNull,
-    );
-    expect(
-      tester
-          .widget<ReelText>(find.byKey(const ValueKey('performance_tile_1')))
-          .options
-          .color,
-      Studio.sky,
-    );
-    expect(_performanceTileClipCount(), stressedTiles);
   });
 
   testWidgets('app bar theme toggle switches the studio palette', (
@@ -511,22 +266,6 @@ void main() {
     await _expectAccessibilityGuidelines(tester);
   });
 
-  testWidgets('performance page meets Flutter accessibility guidelines', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
-    );
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byKey(const ValueKey('page_tab_performance')));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    await _expectAccessibilityGuidelines(tester);
-  });
-
   testWidgets('recipes page meets Flutter accessibility guidelines', (
     tester,
   ) async {
@@ -589,23 +328,6 @@ void main() {
     await _expectAccessibilityGuidelines(tester);
   });
 
-  testWidgets(
-    'mobile performance page meets Flutter accessibility guidelines',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 844));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      await tester.pumpWidget(
-        const ReelTextExampleApp(useGoogleFonts: false, autoPlayHero: false),
-      );
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(find.byKey(const ValueKey('page_tab_performance')));
-      await tester.pump(const Duration(milliseconds: 300));
-
-      await _expectAccessibilityGuidelines(tester);
-    },
-  );
-
   testWidgets('primary pages tolerate 200 percent text scaling', (
     tester,
   ) async {
@@ -628,10 +350,6 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('page_tab_editor')));
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.byKey(const ValueKey('page_tab_performance')));
-    await tester.pump(const Duration(milliseconds: 300));
     expect(tester.takeException(), isNull);
   });
 
@@ -1504,37 +1222,11 @@ Finder _semanticButtonWithLabel(String label) {
   );
 }
 
-int _performanceTileClipCount() {
-  return find
-      .byWidgetPredicate(
-        (widget) =>
-            widget.key is ValueKey<String> &&
-            (widget.key! as ValueKey<String>).value.startsWith(
-              'performance_tile_clip_',
-            ),
-        description: 'performance tile clips',
-      )
-      .evaluate()
-      .length;
-}
-
-double _performanceMaxTileCount(Size size) {
-  final compact = size.width < 720;
-  final columns = (size.width / ((compact ? 82 : 126) / 3)).ceil();
-  final rows = (size.height / ((compact ? 52 : 64) / 3)).ceil();
-  return (columns * rows).toDouble();
-}
-
 Color? _panelColor(WidgetTester tester, String key) {
   final panel = find.byKey(ValueKey(key));
   final decoratedBox = tester.widget<DecoratedBox>(
     find.descendant(of: panel, matching: find.byType(DecoratedBox)).first,
   );
-  return (decoratedBox.decoration as BoxDecoration).color;
-}
-
-Color? _decoratedBoxColor(WidgetTester tester, String key) {
-  final decoratedBox = tester.widget<DecoratedBox>(find.byKey(ValueKey(key)));
   return (decoratedBox.decoration as BoxDecoration).color;
 }
 

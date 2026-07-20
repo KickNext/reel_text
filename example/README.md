@@ -18,8 +18,17 @@ It demonstrates:
   inline widgets.
 - A motion workbench with target editing, direction/color/timing controls, and
   a `ReelText.controller` preview.
-- A full-screen Performance page with a checkerboard of looping `ReelText`
-  swaps for visual stress testing.
+
+The visual performance stress case lives outside the showcase as an integration
+benchmark. Run it on a target device in profile mode:
+
+```bash
+flutter drive \
+  --driver=test_driver/integration_test.dart \
+  --target=integration_test/performance_benchmark_test.dart \
+  --profile \
+  -d macos
+```
 
 Run it with:
 
