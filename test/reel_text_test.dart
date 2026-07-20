@@ -386,6 +386,51 @@ void main() {
     expect(textScaler.calls, initialScaleCalls);
   });
 
+  testWidgets('roll reuses settled and target frame measurements', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('measurement_cache_reel');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 120),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+
+    Widget frame(String text, {double fontSize = 18}) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: ReelText(
+          text,
+          key: reelKey,
+          options: options,
+          style: _textStyle(fontSize),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame('Alpha'));
+    final state = tester.state(find.byKey(reelKey));
+    expect((state as dynamic).debugFrameMeasureCount as int, 1);
+
+    await tester.pumpWidget(frame('Bravo'));
+    expect((state as dynamic).debugFrameMeasureCount as int, 2);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('reel_text_settled')), findsOneWidget);
+    expect((state as dynamic).debugFrameMeasureCount as int, 2);
+
+    await tester.pumpWidget(frame('Delta'));
+    expect((state as dynamic).debugFrameMeasureCount as int, 3);
+
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(frame('Alpha'));
+    expect((state as dynamic).debugFrameMeasureCount as int, 3);
+
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(frame('Echo', fontSize: 24));
+    expect((state as dynamic).debugFrameMeasureCount as int, 5);
+  });
+
   testWidgets('settled locale layout matches Text size exactly', (
     tester,
   ) async {
@@ -3498,7 +3543,8 @@ void main() {
       duration: Duration(milliseconds: 120),
       stagger: Duration.zero,
       exitOffset: Duration.zero,
-      bounce: 0.8,
+      curve: Curves.linear,
+      bounce: 0,
       skipUnchanged: false,
     );
 
@@ -3515,7 +3561,7 @@ void main() {
     final settledSize = tester.getSize(find.byKey(reelKey));
 
     await tester.pumpWidget(frame('gggg'));
-    await tester.pump(const Duration(milliseconds: 60));
+    await tester.pump(const Duration(milliseconds: 105));
 
     expect(tester.getSize(find.byKey(reelKey)), settledSize);
     final clip = tester.widget<ClipRect>(find.byType(ClipRect).first);
@@ -3523,6 +3569,23 @@ void main() {
 
     expect(rect.top, lessThan(0));
     expect(rect.bottom, greaterThan(settledSize.height));
+
+    final rollingSlot = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('reel_text_rolling_text_slot')).first,
+    );
+    expect(
+      rollingSlot,
+      paints
+        ..something((methodName, arguments) {
+          if (methodName != #saveLayer) {
+            return false;
+          }
+          final bounds = arguments.first as Rect?;
+          return bounds != null &&
+              bounds.top < 0 &&
+              bounds.bottom > rollingSlot.size.height;
+        }),
+    );
   });
 
   testWidgets(
