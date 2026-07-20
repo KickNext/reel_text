@@ -606,8 +606,14 @@ class _RenderRollingTextSlotFace extends RenderBox {
     canvas.translate(-face.width / 2, -face.height / 2);
 
     if (opacity < 0.999) {
+      final verticalBleed = _verticalSlotBleed(face.height);
       canvas.saveLayer(
-        Rect.fromLTWH(face.paintDx, 0, face.paintWidth, face.height),
+        Rect.fromLTRB(
+          face.paintDx,
+          -verticalBleed,
+          face.paintDx + face.paintWidth,
+          face.height + verticalBleed,
+        ),
         Paint()
           ..color = Color.fromARGB(
             (opacity.clamp(0.0, 1.0) * 255).round(),

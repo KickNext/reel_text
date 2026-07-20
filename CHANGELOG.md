@@ -1,3 +1,12 @@
+## 0.4.3
+
+- Reused up to four recent text measurements across recurring rolls, reducing
+  transition-start UI-thread spikes while keeping style, direction, locale,
+  text scaling, rich-span identity, and widget metrics in the cache key.
+- Preserved vertical glyph bleed while outgoing faces fade, preventing accents
+  and descenders from being clipped during animation.
+- No public API changes.
+
 ## 0.4.2
 
 - Discarded transitions queued by a previous `ReelTextController` when a
