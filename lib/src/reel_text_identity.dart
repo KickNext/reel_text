@@ -36,17 +36,7 @@ GlobalKey? _globalWidgetAnchorKey(WidgetSpan span) {
 }
 
 bool _sameWidgetAnchorSignature(InlineSpan? a, InlineSpan? b) {
-  final aKeys = _widgetAnchorSignature(a);
-  final bKeys = _widgetAnchorSignature(b);
-  if (aKeys.length != bKeys.length) {
-    return false;
-  }
-  for (var i = 0; i < aKeys.length; i++) {
-    if (aKeys[i] != bKeys[i]) {
-      return false;
-    }
-  }
-  return true;
+  return listEquals(_widgetAnchorSignature(a), _widgetAnchorSignature(b));
 }
 
 List<Key?> _widgetAnchorSignature(InlineSpan? span) {

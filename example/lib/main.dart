@@ -11,7 +11,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'editor_page.dart';
 import 'home_page.dart';
-import 'performance_page.dart';
 import 'recipes_page.dart';
 import 'studio.dart';
 
@@ -221,12 +220,11 @@ class StudioShell extends StatefulWidget {
 
 class _StudioShellState extends State<StudioShell> {
   late int _page;
-  var _performanceTileTarget = 4.0;
 
   @override
   void initState() {
     super.initState();
-    _page = widget.initialPage.clamp(0, 3).toInt();
+    _page = widget.initialPage.clamp(0, 2).toInt();
   }
 
   @override
@@ -238,15 +236,6 @@ class _StudioShellState extends State<StudioShell> {
       ),
       TickerMode(enabled: _page == 1, child: const RecipesPage()),
       TickerMode(enabled: _page == 2, child: const EditorPage()),
-      TickerMode(
-        enabled: _page == 3,
-        child: PerformancePage(
-          active: _page == 3,
-          tileTarget: _performanceTileTarget,
-          onTileTargetChanged: (value) =>
-              setState(() => _performanceTileTarget = value),
-        ),
-      ),
     ];
     return Scaffold(
       body: SafeArea(
@@ -299,7 +288,7 @@ class _TopBarState extends State<_TopBar> {
   late Future<_PackageStats> _stats;
   Timer? _statsRefreshTimer;
 
-  static const _pageNames = ['HOME', 'RECIPES', 'EDITOR', 'PERF'];
+  static const _pageNames = ['HOME', 'RECIPES', 'EDITOR'];
   static const _statsRefreshInterval = Duration(seconds: 125);
 
   static final _pubDevUri = Uri.parse('https://pub.dev/packages/reel_text');
@@ -656,10 +645,7 @@ class _PageTabs extends StatelessWidget {
 }
 
 String _pageTabKey(String label) {
-  return switch (label) {
-    'PERF' => 'performance',
-    _ => label.toLowerCase(),
-  };
+  return label.toLowerCase();
 }
 
 class _PageTabVisual extends StatelessWidget {

@@ -7,25 +7,6 @@ import 'package:reel_text/reel_text.dart';
 
 import 'studio.dart';
 
-const _packagePubspecAsset = 'packages/reel_text/pubspec.yaml';
-
-Future<String> _packageVersionLabel() {
-  return _loadPackageVersionLabel();
-}
-
-Future<String> _loadPackageVersionLabel() async {
-  try {
-    final pubspec = await rootBundle.loadString(_packagePubspecAsset);
-    final version = RegExp(
-      r'^version:\s*([^\s]+)\s*$',
-      multiLine: true,
-    ).firstMatch(pubspec)?.group(1);
-    return version == null || version.isEmpty ? 'v?' : 'v$version';
-  } on Object {
-    return 'v?';
-  }
-}
-
 /// Landing page. The hero is a self-running, choreographed presentation that
 /// walks through the package's core capabilities by changing one live line.
 /// Below it is a compact workbench of real text-changing surfaces.
@@ -232,7 +213,9 @@ class _HeroStageState extends State<HeroStage> with TickerProviderStateMixin {
 
   Future<void> _applyCue(_HeroCue cue) async {
     final epoch = ++_cueEpoch;
-    final text = cue.packageVersion ? await _packageVersionLabel() : cue.text;
+    final text = cue.packageVersion
+        ? await loadPackageVersionLabel()
+        : cue.text;
     if (!mounted || epoch != _cueEpoch) {
       return;
     }

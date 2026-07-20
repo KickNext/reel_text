@@ -42,16 +42,14 @@ class _WidgetSpanSizeRegistry {
   }
 
   void setMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {
-    _entries[index] = _WidgetSpanSizeEntry(span, metrics);
+    _entries[index] = (span: span, metrics: metrics);
   }
 }
 
-class _WidgetSpanSizeEntry {
-  const _WidgetSpanSizeEntry(this.span, this.metrics);
-
-  final WidgetSpan span;
-  final _WidgetSpanMetrics metrics;
-}
+typedef _WidgetSpanSizeEntry = ({
+  WidgetSpan span,
+  _WidgetSpanMetrics metrics,
+});
 
 @immutable
 class _WidgetSpanMetrics {
@@ -275,12 +273,12 @@ class _TextRunMetrics {
         width += (box.right - box.left).abs();
         left = math.min(left, math.min(box.left, box.right));
       }
-      return _TokenBounds(width: width, left: left.isFinite ? left : 0);
+      return (width: width, left: left.isFinite ? left : 0);
     }
 
     final startDx = _caretDx(painter, start);
     final endDx = _caretDx(painter, end);
-    return _TokenBounds(
+    return (
       width: (endDx - startDx).abs(),
       left: math.min(startDx, endDx),
     );
@@ -329,12 +327,7 @@ PlaceholderDimensions _placeholderDimensionsForWidget(
   );
 }
 
-class _TokenBounds {
-  const _TokenBounds({required this.width, required this.left});
-
-  final double width;
-  final double left;
-}
+typedef _TokenBounds = ({double width, double left});
 
 class _SlotMetrics {
   const _SlotMetrics({
