@@ -145,9 +145,13 @@ class ReelTextController extends ChangeNotifier {
       _requirePositiveDuration(step, 'waiting.step');
     }
     _requireNonNegativeDuration(waiting.rest, 'waiting.rest');
+    final base = options ??
+        (waiting._kind == _ReelWaitingKind.wave
+            ? _waveWaitingDefaults
+            : _tickWaitingDefaults);
+    _validateReelTextOptions(base);
     switch (waiting._kind) {
       case _ReelWaitingKind.ellipsis:
-        final base = options ?? _tickWaitingDefaults;
         return startProgress(
           text,
           frames: <String>[
@@ -157,7 +161,6 @@ class ReelTextController extends ChangeNotifier {
           options: base,
         );
       case _ReelWaitingKind.wave:
-        final base = options ?? _waveWaitingDefaults;
         final glyphCount = math.max(1, text.characters.length);
         final sweepMs = (glyphCount - 1) * base.stagger.inMilliseconds +
             base.exitOffset.inMilliseconds +
@@ -173,7 +176,6 @@ class ReelTextController extends ChangeNotifier {
           options: base,
         );
       case _ReelWaitingKind.frames:
-        final base = options ?? _tickWaitingDefaults;
         return startProgress(
           text,
           frames: waiting.frames,
@@ -181,7 +183,6 @@ class ReelTextController extends ChangeNotifier {
           options: base,
         );
       case _ReelWaitingKind.builder:
-        final base = options ?? _tickWaitingDefaults;
         final frame = waiting.frameBuilder!;
         return _startFrameLoop(
           initial: frame(text, 0),
@@ -190,7 +191,6 @@ class ReelTextController extends ChangeNotifier {
           options: base.copyWith(interrupt: false),
         );
       case _ReelWaitingKind.scramble:
-        final base = options ?? _tickWaitingDefaults;
         return _startFrameLoop(
           initial: text,
           frameAt: (tick) => _scrambleFrame(text, tick, waiting),

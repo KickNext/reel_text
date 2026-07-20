@@ -4116,6 +4116,53 @@ void main() {
     },
   );
 
+  testWidgets('invalid custom waiting options preserve the active loop', (
+    tester,
+  ) async {
+    final controller = ReelTextController(initialText: 'Sync');
+    addTearDown(controller.dispose);
+    final active = controller.startWaiting(
+      'Sync',
+      waiting: const ReelWaiting.ellipsis(
+        step: Duration(milliseconds: 50),
+      ),
+    );
+    const invalidOptions = ReelTextOptions(
+      duration: Duration(microseconds: -1),
+    );
+
+    expect(
+      () => controller.startWaiting(
+        'Build',
+        waiting: ReelWaiting.builder(
+          (text, tick) => '$text$tick',
+          step: const Duration(milliseconds: 50),
+        ),
+        options: invalidOptions,
+      ),
+      throwsArgumentError,
+    );
+    expect(active.isActive, isTrue);
+    expect(controller.value, 'Sync');
+
+    expect(
+      () => controller.startWaiting(
+        'Scramble',
+        waiting: const ReelWaiting.scramble(
+          step: Duration(milliseconds: 50),
+        ),
+        options: invalidOptions,
+      ),
+      throwsArgumentError,
+    );
+    expect(active.isActive, isTrue);
+    expect(controller.value, 'Sync');
+
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(controller.value, 'Sync.');
+    active.cancel();
+  });
+
   testWidgets('snaps without rolling when animations are disabled', (
     tester,
   ) async {
