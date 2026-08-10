@@ -1,6 +1,7 @@
 # reel_text example
 
-Interactive Flutter example app for the `reel_text` package.
+`example.md` contains the concise usage example displayed on pub.dev.
+`lib/main.dart` runs the full interactive showcase deployed to GitHub Pages.
 
 This app has its own SDK constraint and dependencies in this directory. The
 package compatibility floor is defined by the root `pubspec.yaml`.
@@ -30,7 +31,7 @@ flutter drive \
   -d macos
 ```
 
-Run it with:
+Run the interactive showcase with:
 
 ```bash
 flutter run
