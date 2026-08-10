@@ -1,3 +1,9 @@
+## 0.4.4
+
+- Added a concise, copy-ready example for the pub.dev Example tab while
+  preserving the full interactive showcase as the default example app.
+- No public API changes.
+
 ## 0.4.3
 
 - Reused up to four recent text measurements across recurring rolls, reducing
