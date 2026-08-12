@@ -283,12 +283,14 @@ class _RenderReelTextSurface extends RenderBox
   _MeasuredReelTextRun? _measuredFromRun;
   _MeasuredReelTextRun? _measuredToRun;
   int _measuredWidgetRevision = -1;
+  _ReelTextSurfaceGeometry? _laidOutGeometry;
   final _preparedFaces = <_ReelPreparedFaceKey, _PreparedTextFace>{};
   var _preparedFaceLayoutCount = 0;
   var _disposedPreparedFaceLayoutCount = 0;
   var _disposedTransientFaceLayoutCount = 0;
   double _debugPreparedToFaceDx = double.nan;
   double _debugCurrentToFaceDx = double.nan;
+  List<Map<String, Object>> _debugVisibleGlyphBounds = const [];
 
   _ReelTextSurfaceData get data => _data;
 
@@ -369,7 +371,7 @@ class _RenderReelTextSurface extends RenderBox
 
   double get debugHorizontalBleed => _horizontalTextTokenBleed(_height);
 
-  double get debugNaturalRowWidth => _geometry().rowWidth;
+  double get debugNaturalRowWidth => _currentGeometry.rowWidth;
 
   Rect get debugVerticalClipRect => Rect.fromLTRB(
         0,
@@ -389,112 +391,10 @@ class _RenderReelTextSurface extends RenderBox
     return slot.inY(_data.progressMs, _travelDistance);
   }
 
-  List<Map<String, Object>> get debugVisibleGlyphBounds {
-    final geometry = _geometry();
-    final rowLeft = geometry.rowLeftFor(size);
-    final entries = <Map<String, Object>>[];
-    if (!_data.isRolling) {
-      final run = _settledRun;
-      for (var item = 0; item < run.visualOrder.length; item++) {
-        final token = run.tokenAt(run.visualOrder[item]);
-        if (token == null || token.isWidget || token.text.isEmpty) {
-          continue;
-        }
-        _addDebugGlyphBounds(
-          entries,
-          text: token.text,
-          itemLeft: rowLeft + geometry.itemLefts[item],
-          itemWidth: geometry.itemWidths[item],
-          faceWidth: geometry.itemWidths[item],
-          dy: 0,
-          opacity: 1,
-        );
-      }
-      return entries;
-    }
-
-    final plan = _data.plan!;
-    final fromRun = _fromRun;
-    final toRun = _toRun;
-    final progressMs = _data.progressMs;
-    for (var item = 0; item < plan.slots.length; item++) {
-      final slot = plan.slots[item];
-      final itemLeft = rowLeft + geometry.itemLefts[item];
-      final itemWidth = geometry.itemWidths[item];
-      final fromToken = fromRun.tokenFor(slot.from);
-      final toToken = toRun.tokenFor(slot.to);
-      final hasWidgetEndpoint =
-          (fromToken?.isWidget ?? false) || (toToken?.isWidget ?? false);
-      if (!slot.changed || hasWidgetEndpoint) {
-        final visibleToken = toToken ?? fromToken;
-        final visibleWidth = slot.to == null
-            ? fromRun.widthFor(slot.from)
-            : toRun.widthFor(slot.to);
-        if (visibleToken != null && !visibleToken.isWidget) {
-          _addDebugGlyphBounds(
-            entries,
-            text: visibleToken.text,
-            itemLeft: itemLeft,
-            itemWidth: itemWidth,
-            faceWidth: visibleWidth,
-            dy: 0,
-            opacity: 1,
-          );
-        }
-        continue;
-      }
-      if (slot.from != null && fromToken != null && !fromToken.isWidget) {
-        _addDebugGlyphBounds(
-          entries,
-          text: fromToken.text,
-          itemLeft: itemLeft,
-          itemWidth: itemWidth,
-          faceWidth: fromRun.widthFor(slot.from),
-          dy: slot.outY(progressMs, _travelDistance),
-          opacity: slot.outOpacity(progressMs),
-        );
-      }
-      if (slot.to != null && toToken != null && !toToken.isWidget) {
-        _addDebugGlyphBounds(
-          entries,
-          text: toToken.text,
-          itemLeft: itemLeft,
-          itemWidth: itemWidth,
-          faceWidth: toRun.widthFor(slot.to),
-          dy: slot.inY(progressMs, _travelDistance),
-          opacity: 1,
-        );
-      }
-    }
-    return entries;
-  }
+  List<Map<String, Object>> get debugVisibleGlyphBounds =>
+      _debugVisibleGlyphBounds;
 
   double get _travelDistance => _height + _verticalSlotBleed(_height) * 2;
-
-  void _addDebugGlyphBounds(
-    List<Map<String, Object>> entries, {
-    required String text,
-    required double itemLeft,
-    required double itemWidth,
-    required double faceWidth,
-    required double dy,
-    required double opacity,
-  }) {
-    if (text.isEmpty || opacity <= 0.01) {
-      return;
-    }
-    final paintWidth = faceWidth + _horizontalTextTokenBleed(_height);
-    final left = itemLeft +
-        _faceDxFor(itemWidth, faceWidth) +
-        _paintDxFor(faceWidth, paintWidth);
-    entries.add({
-      'text': text,
-      'left': left,
-      'right': left + paintWidth,
-      'top': dy,
-      'bottom': dy + _height,
-    });
-  }
 
   @override
   void attach(PipelineOwner owner) {
@@ -516,11 +416,13 @@ class _RenderReelTextSurface extends RenderBox
   }
 
   void _handleAnimationTick() {
+    _laidOutGeometry = null;
     markNeedsLayout();
     markNeedsPaint();
   }
 
   void _invalidateMeasuredRuns() {
+    _laidOutGeometry = null;
     _measuredWidgetRevision = -1;
     _measuredSettledRun = null;
     _measuredFromRun = null;
@@ -578,6 +480,9 @@ class _RenderReelTextSurface extends RenderBox
       to: _data.isRolling ? _toRun : null,
     ));
   }
+
+  _ReelTextSurfaceGeometry get _currentGeometry =>
+      _laidOutGeometry ?? _geometry();
 
   _ReelTextSurfaceGeometry _geometryFor(_ReelTextSurfaceRuns runs) {
     if (!_data.isRolling) {
@@ -659,24 +564,95 @@ class _RenderReelTextSurface extends RenderBox
     );
   }
 
-  Size _layoutSizeFor(BoxConstraints constraints) {
-    final geometry = _geometry();
-    return constraints.constrain(
-      Size(geometry.desiredWidth, geometry.height),
+  List<PlaceholderDimensions> _layoutInlineChildren(
+    double maxWidth,
+    ChildLayouter layoutChild, {
+    required bool dry,
+  }) {
+    final childConstraints = BoxConstraints(maxWidth: maxWidth);
+    return <PlaceholderDimensions>[
+      for (RenderBox? child = firstChild;
+          child != null;
+          child = childAfter(child))
+        _inlineChildDimensions(
+          child,
+          childConstraints,
+          layoutChild,
+          dry: dry,
+        ),
+    ];
+  }
+
+  PlaceholderDimensions _inlineChildDimensions(
+    RenderBox child,
+    BoxConstraints childConstraints,
+    ChildLayouter layoutChild, {
+    required bool dry,
+  }) {
+    final parentData = child.parentData! as TextParentData;
+    final span = parentData.span;
+    assert(span != null);
+    if (span == null) {
+      return PlaceholderDimensions.empty;
+    }
+
+    final childSize = layoutChild(child, childConstraints);
+    return PlaceholderDimensions(
+      size: childSize,
+      alignment: span.alignment,
+      baseline: span.baseline,
+      baselineOffset: switch (span.alignment) {
+        ui.PlaceholderAlignment.aboveBaseline ||
+        ui.PlaceholderAlignment.belowBaseline ||
+        ui.PlaceholderAlignment.bottom ||
+        ui.PlaceholderAlignment.middle ||
+        ui.PlaceholderAlignment.top =>
+          null,
+        ui.PlaceholderAlignment.baseline => dry
+            ? _dryBaselineForInlineChild(
+                child,
+                childConstraints,
+                span.baseline!,
+                childSize,
+              )
+            : child.getDistanceToBaseline(span.baseline!),
+      },
     );
+  }
+
+  double _dryBaselineForInlineChild(
+    RenderBox child,
+    BoxConstraints childConstraints,
+    TextBaseline baseline,
+    Size childSize,
+  ) {
+    try {
+      final value = (child as dynamic).getDryBaseline(
+        childConstraints,
+        baseline,
+      ) as double?;
+      return value ?? childSize.height;
+    } on NoSuchMethodError {
+      // Flutter before 3.24 has no dry-baseline API. Its own inline-child
+      // helper treated a missing baseline as the bottom of the placeholder.
+      return childSize.height;
+    }
   }
 
   @override
   void performLayout() {
-    final dimensions = layoutInlineChildren(
+    final dimensions = _layoutInlineChildren(
       double.infinity,
       ChildLayoutHelper.layoutChild,
-      ChildLayoutHelper.getBaseline,
+      dry: false,
     );
     _recordInlineWidgetMetrics(dimensions);
     _syncMeasuredRuns();
-    size = _layoutSizeFor(constraints);
     final geometry = _geometry();
+    _laidOutGeometry = geometry;
+    size = constraints.constrain(
+      Size(geometry.desiredWidth, geometry.height),
+    );
     final rowLeft = geometry.rowLeftFor(size);
     final boxes = <ui.TextBox>[];
     final widgets = _data.inlineWidgets;
@@ -794,10 +770,10 @@ class _RenderReelTextSurface extends RenderBox
   }
 
   _ReelTextSurfaceGeometry _dryGeometry() {
-    final dimensions = layoutInlineChildren(
+    final dimensions = _layoutInlineChildren(
       double.infinity,
       ChildLayoutHelper.dryLayoutChild,
-      ChildLayoutHelper.getDryBaseline,
+      dry: true,
     );
     return _geometryFor(_runsForDimensions(dimensions));
   }
@@ -857,16 +833,19 @@ class _RenderReelTextSurface extends RenderBox
     return _baselineFor(baseline);
   }
 
+  // Flutter 3.16 does not declare this hook yet. Keeping the method (and the
+  // ignored annotation) lets newer SDKs use it without dropping 3.16 support.
   @override
+  // ignore: override_on_non_overriding_member
   double? computeDryBaseline(
     covariant BoxConstraints constraints,
     TextBaseline baseline,
   ) {
     return _baselineForRuns(
-        _runsForDimensions(layoutInlineChildren(
+        _runsForDimensions(_layoutInlineChildren(
           double.infinity,
           ChildLayoutHelper.dryLayoutChild,
-          ChildLayoutHelper.getDryBaseline,
+          dry: true,
         )),
         baseline);
   }
@@ -895,7 +874,11 @@ class _RenderReelTextSurface extends RenderBox
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    final geometry = _geometry();
+    assert(() {
+      _debugVisibleGlyphBounds = <Map<String, Object>>[];
+      return true;
+    }());
+    final geometry = _currentGeometry;
     final rowLeft = geometry.rowLeftFor(size);
     final canvas = context.canvas;
     canvas.save();
@@ -923,6 +906,7 @@ class _RenderReelTextSurface extends RenderBox
       final width = geometry.itemWidths[item];
       _paintPreparedFace(
         canvas,
+        debugText: token.text,
         face: _preparedFace(
           text: token.text,
           style: token.style,
@@ -965,6 +949,7 @@ class _RenderReelTextSurface extends RenderBox
             : toRun.widthFor(slot.to);
         _paintPreparedFace(
           canvas,
+          debugText: visibleToken.text,
           face: _preparedFace(
             text: visibleToken.text,
             style: visibleToken.style,
@@ -994,6 +979,7 @@ class _RenderReelTextSurface extends RenderBox
       if (slot.from != null && fromToken != null && !fromToken.isWidget) {
         _paintPreparedFace(
           canvas,
+          debugText: fromToken.text,
           face: _preparedFace(
             text: fromToken.text,
             style: fromToken.style,
@@ -1027,6 +1013,7 @@ class _RenderReelTextSurface extends RenderBox
           );
           _paintPreparedFace(
             canvas,
+            debugText: toToken.text,
             face: face,
             itemLeft: itemLeft,
             itemWidth: itemWidth,
@@ -1118,6 +1105,7 @@ class _RenderReelTextSurface extends RenderBox
     try {
       _paintPreparedFace(
         canvas,
+        debugText: text,
         face: face,
         itemLeft: itemLeft,
         itemWidth: itemWidth,
@@ -1133,6 +1121,7 @@ class _RenderReelTextSurface extends RenderBox
 
   void _paintPreparedFace(
     Canvas canvas, {
+    required String debugText,
     required _PreparedTextFace face,
     required double itemLeft,
     required double itemWidth,
@@ -1144,6 +1133,18 @@ class _RenderReelTextSurface extends RenderBox
       return;
     }
     final faceDx = _faceDxFor(itemWidth, face.width);
+    assert(() {
+      _recordDebugGlyphBounds(
+        text: debugText,
+        face: face,
+        itemLeft: itemLeft,
+        faceDx: faceDx,
+        dy: dy,
+        angle: angle,
+        opacity: opacity,
+      );
+      return true;
+    }());
     canvas.save();
     canvas.translate(
       itemLeft + faceDx + face.width / 2,
@@ -1176,6 +1177,47 @@ class _RenderReelTextSurface extends RenderBox
       canvas.restore();
     }
     canvas.restore();
+  }
+
+  void _recordDebugGlyphBounds({
+    required String text,
+    required _PreparedTextFace face,
+    required double itemLeft,
+    required double faceDx,
+    required double dy,
+    required double angle,
+    required double opacity,
+  }) {
+    if (text.isEmpty || opacity <= 0.01) {
+      return;
+    }
+
+    final centerX = itemLeft + faceDx + face.width / 2;
+    final centerY = dy + face.height / 2;
+    final left = face.paintDx - face.width / 2;
+    final right = left + face.paintWidth;
+    final top = -face.height / 2;
+    final bottom = face.height / 2;
+    final cosine = math.cos(angle);
+    final sine = math.sin(angle);
+    final xs = <double>[];
+    final ys = <double>[];
+    for (final corner in <Offset>[
+      Offset(left, top),
+      Offset(right, top),
+      Offset(right, bottom),
+      Offset(left, bottom),
+    ]) {
+      xs.add(centerX + corner.dx * cosine - corner.dy * sine);
+      ys.add(centerY + corner.dx * sine + corner.dy * cosine);
+    }
+    _debugVisibleGlyphBounds.add({
+      'text': text,
+      'left': xs.reduce(math.min),
+      'right': xs.reduce(math.max),
+      'top': ys.reduce(math.min),
+      'bottom': ys.reduce(math.max),
+    });
   }
 
   double _faceDxFor(double itemWidth, double faceWidth) {

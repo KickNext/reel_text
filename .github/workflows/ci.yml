@@ -7,6 +7,26 @@ on:
       - main
 
 jobs:
+  minimum-flutter:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.16.0
+          cache: true
+
+      - name: Install package dependencies
+        run: flutter pub get --no-example
+
+      - name: Analyze package
+        run: flutter analyze --no-pub lib
+
+      - name: Test package
+        run: flutter test --no-pub
+
   verify:
     runs-on: ubuntu-latest
 

@@ -182,17 +182,35 @@ class _RenderReelTextSelectableStack extends RenderBox
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    return defaultHitTestChildren(result, position: position);
+    final visual = firstChild;
+    if (visual != null && _hitTestChild(result, visual, position)) {
+      return true;
+    }
+
+    final selection = visual == null ? null : childAfter(visual);
+    return selection != null && _hitTestChild(result, selection, position);
+  }
+
+  bool _hitTestChild(
+    BoxHitTestResult result,
+    RenderBox child,
+    Offset position,
+  ) {
+    final parentData = child.parentData! as _ReelTextSelectableParentData;
+    return result.addWithPaintOffset(
+      offset: parentData.offset,
+      position: position,
+      hitTest: (result, transformed) {
+        return child.hitTest(result, position: transformed);
+      },
+    );
   }
 
   @override
   void applyPaintTransform(RenderBox child, Matrix4 transform) {
     final parentData = child.parentData! as _ReelTextSelectableParentData;
-    transform.translateByDouble(
-      parentData.offset.dx,
-      parentData.offset.dy,
-      0,
-      1,
+    transform.multiply(
+      Matrix4.translationValues(parentData.offset.dx, parentData.offset.dy, 0),
     );
   }
 }
@@ -224,7 +242,7 @@ InlineSpan _transparentInlineSpan(
     return WidgetSpan(
       alignment: span.alignment,
       baseline: span.baseline,
-      style: span.style,
+      style: _transparentLayoutStyle(span.style ?? const TextStyle()),
       child: sizes.nextPlaceholder(span),
     );
   }
@@ -235,10 +253,8 @@ InlineSpan _transparentInlineSpan(
     );
   }
 
-  final transparentStyle = (span.style ?? const TextStyle()).copyWith(
-    color: Colors.transparent,
-    decorationColor: Colors.transparent,
-  );
+  final transparentStyle =
+      _transparentLayoutStyle(span.style ?? const TextStyle());
   return TextSpan(
     text: span.text,
     style: transparentStyle,
@@ -253,6 +269,31 @@ InlineSpan _transparentInlineSpan(
       for (final child in span.children ?? const <InlineSpan>[])
         _transparentInlineSpan(child, sizes),
     ],
+  );
+}
+
+TextStyle _transparentLayoutStyle(TextStyle style) {
+  return TextStyle(
+    inherit: style.inherit,
+    color: Colors.transparent,
+    backgroundColor: Colors.transparent,
+    fontSize: style.fontSize,
+    fontWeight: style.fontWeight,
+    fontStyle: style.fontStyle,
+    letterSpacing: style.letterSpacing,
+    wordSpacing: style.wordSpacing,
+    textBaseline: style.textBaseline,
+    height: style.height,
+    leadingDistribution: style.leadingDistribution,
+    locale: style.locale,
+    shadows: const <Shadow>[],
+    fontFeatures: style.fontFeatures,
+    fontVariations: style.fontVariations,
+    decoration: TextDecoration.none,
+    decorationColor: Colors.transparent,
+    fontFamily: style.fontFamily,
+    fontFamilyFallback: style.fontFamilyFallback,
+    overflow: style.overflow,
   );
 }
 
@@ -284,7 +325,8 @@ class _WidgetSpanSelectionCursor {
 }
 
 double _widgetSpanTextScaleFactor(TextScaler textScaler, TextStyle style) {
-  final fontSize = style.fontSize ?? kDefaultFontSize;
+  const defaultFontSize = 14.0;
+  final fontSize = style.fontSize ?? defaultFontSize;
   if (fontSize <= 0 || !fontSize.isFinite) {
     return 1;
   }

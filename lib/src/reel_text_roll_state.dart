@@ -93,6 +93,7 @@ class _ReelTextMeasureKey {
 typedef _ActiveRoll = ({
   _MeasuredReelTextFrame from,
   _MeasuredReelTextFrame to,
+  int widgetSpanMetricsRevision,
   ReelTextOptions options,
   _RollPlan plan,
 });

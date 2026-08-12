@@ -271,15 +271,19 @@ void main() {
     final textBox = tester.renderObject<RenderBox>(find.byKey(textKey));
     final reelSize = tester.getSize(find.byKey(reelKey));
     final textSize = tester.getSize(find.byKey(textKey));
-    final dryBaseline = reelBox.getDryBaseline(
+    final dryBaseline = _dryBaselineFor(
+      reelBox,
       BoxConstraints.tight(reelSize),
       TextBaseline.alphabetic,
     );
-    final textDryBaseline = textBox.getDryBaseline(
+    final textDryBaseline = _dryBaselineFor(
+      textBox,
       BoxConstraints.tight(textSize),
       TextBaseline.alphabetic,
     );
-    expect(dryBaseline, closeTo(textDryBaseline!, 0.001));
+    if (dryBaseline != null && textDryBaseline != null) {
+      expect(dryBaseline, closeTo(textDryBaseline, 0.001));
+    }
   });
 
   testWidgets('rolling layout exposes Text-like alphabetic baseline', (
@@ -334,15 +338,19 @@ void main() {
     final textBox = tester.renderObject<RenderBox>(find.byKey(textKey));
     final reelSize = tester.getSize(find.byKey(reelKey));
     final textSize = tester.getSize(find.byKey(textKey));
-    final dryBaseline = reelBox.getDryBaseline(
+    final dryBaseline = _dryBaselineFor(
+      reelBox,
       BoxConstraints.tight(reelSize),
       TextBaseline.alphabetic,
     );
-    final textDryBaseline = textBox.getDryBaseline(
+    final textDryBaseline = _dryBaselineFor(
+      textBox,
       BoxConstraints.tight(textSize),
       TextBaseline.alphabetic,
     );
-    expect(dryBaseline, closeTo(textDryBaseline!, 0.001));
+    if (dryBaseline != null && textDryBaseline != null) {
+      expect(dryBaseline, closeTo(textDryBaseline, 0.001));
+    }
   });
 
   testWidgets('settled glyph subtree is reused across parent rebuilds', (
@@ -463,6 +471,30 @@ void main() {
       tester.getSize(find.byKey(reelKey)),
       tester.getSize(find.byKey(textKey)),
     );
+  });
+
+  testWidgets('inherits locale changes for measurement cache keys', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_inherited_locale');
+
+    Widget frame(Locale locale) {
+      return Localizations(
+        locale: locale,
+        delegates: const [DefaultWidgetsLocalizations.delegate],
+        child: const Directionality(
+          textDirection: TextDirection.ltr,
+          child: ReelText('Locale', key: reelKey),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(const Locale('en')));
+    final state = tester.state(find.byKey(reelKey));
+    expect((state as dynamic).debugFrameMeasureCount as int, 1);
+
+    await tester.pumpWidget(frame(const Locale('ja')));
+    expect((state as dynamic).debugFrameMeasureCount as int, 2);
   });
 
   testWidgets('mixed bidi labels keep Text-like size and semantics', (
@@ -1524,6 +1556,78 @@ void main() {
       tester.getSize(find.byKey(reelKey)),
       tester.getSize(find.byKey(textKey)),
     );
+  });
+
+  testWidgets('SelectionArea lets an interactive WidgetSpan receive taps', (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('interactive_widget_span');
+    var taps = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SelectionArea(
+          child: Center(
+            child: ReelText.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(text: 'Tap '),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: GestureDetector(
+                      key: widgetKey,
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => taps++,
+                      child: const SizedBox(width: 48, height: 32),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(widgetKey));
+    await tester.pump();
+
+    expect(taps, 1);
+  });
+
+  testWidgets('selection surface strips foreground and background paints', (
+    tester,
+  ) async {
+    final paintedStyle = TextStyle(
+      foreground: Paint()..color = const Color(0x999f7aea),
+      background: Paint()..color = const Color(0x5538b2ac),
+      shadows: const [
+        Shadow(color: Colors.black, blurRadius: 4, offset: Offset(2, 3)),
+      ],
+      decoration: TextDecoration.underline,
+      decorationColor: Colors.red,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SelectionArea(
+          child: ReelText.rich(TextSpan(text: 'Paint', style: paintedStyle)),
+        ),
+      ),
+    );
+
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byKey(const ValueKey('reel_text_selection_surface')),
+    );
+    final root = paragraph.text as TextSpan;
+    final transparentSpan = root.children!.single as TextSpan;
+    final style = transparentSpan.style!;
+    expect(style.foreground, isNull);
+    expect(style.background, isNull);
+    expect(style.color, Colors.transparent);
+    expect(style.backgroundColor, Colors.transparent);
+    expect(style.shadows, isEmpty);
+    expect(style.decoration, TextDecoration.none);
   });
 
   testWidgets('exposes one full selectable text surface inside SelectionArea', (
@@ -3454,6 +3558,129 @@ void main() {
     expect(rolling.center.dx, closeTo(box.center.dx, 0.01));
   });
 
+  testWidgets('active roll remeasures when inherited text style changes', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_active_style_change');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 800),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      curve: Curves.linear,
+      bounce: 0,
+    );
+
+    Widget frame(String text, double fontSize) {
+      return DefaultTextStyle(
+        style: TextStyle(
+          fontFamily: 'Ahem',
+          fontSize: fontSize,
+          height: 1,
+        ),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ReelText(text, key: reelKey, options: options),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame('AA', 20));
+    await tester.pumpWidget(frame('WW', 20));
+    await tester.pump(const Duration(milliseconds: 80));
+    final state = tester.state(find.byKey(reelKey));
+    final smallHeight = tester.getSize(find.byKey(reelKey)).height;
+    final initialMeasurements =
+        (state as dynamic).debugFrameMeasureCount as int;
+
+    await tester.pumpWidget(frame('WW', 48));
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(
+        tester.getSize(find.byKey(reelKey)).height, greaterThan(smallHeight));
+    expect(
+      (state as dynamic).debugFrameMeasureCount as int,
+      greaterThan(initialMeasurements),
+    );
+  });
+
+  testWidgets('active roll refreshes every layout measurement input', (
+    tester,
+  ) async {
+    const reelKey = ValueKey('reel_active_layout_change');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 1200),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+      curve: Curves.linear,
+      bounce: 0,
+    );
+
+    Widget frame(
+      String text, {
+      TextDirection direction = TextDirection.ltr,
+      Locale locale = const Locale('en'),
+      StrutStyle? strutStyle,
+      TextScaler textScaler = TextScaler.noScaling,
+    }) {
+      return MediaQuery(
+        data: MediaQueryData(textScaler: textScaler),
+        child: Localizations(
+          locale: locale,
+          delegates: const [DefaultWidgetsLocalizations.delegate],
+          child: Directionality(
+            textDirection: direction,
+            child: Center(
+              child: ReelText(
+                text,
+                key: reelKey,
+                options: options,
+                strutStyle: strutStyle,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame('AA'));
+    await tester.pumpWidget(frame('WW'));
+    await tester.pump(const Duration(milliseconds: 40));
+    final state = tester.state(find.byKey(reelKey));
+    var measurements = (state as dynamic).debugFrameMeasureCount as int;
+
+    Future<void> expectRemeasured(Widget nextFrame) async {
+      await tester.pumpWidget(nextFrame);
+      final nextMeasurements = (state as dynamic).debugFrameMeasureCount as int;
+      expect(nextMeasurements, greaterThan(measurements));
+      measurements = nextMeasurements;
+      expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    }
+
+    await expectRemeasured(frame('WW', direction: TextDirection.rtl));
+    await expectRemeasured(
+      frame('WW', direction: TextDirection.rtl, locale: const Locale('ja')),
+    );
+    await expectRemeasured(
+      frame(
+        'WW',
+        direction: TextDirection.rtl,
+        locale: const Locale('ja'),
+        strutStyle: const StrutStyle(fontSize: 30, height: 1.4),
+      ),
+    );
+    await expectRemeasured(
+      frame(
+        'WW',
+        direction: TextDirection.rtl,
+        locale: const Locale('ja'),
+        strutStyle: const StrutStyle(fontSize: 30, height: 1.4),
+        textScaler: const TextScaler.linear(1.5),
+      ),
+    );
+  });
+
   testWidgets('declarative text changes roll then settle', (tester) async {
     await tester.pumpWidget(
       const Directionality(
@@ -4307,6 +4534,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel('Copied'), findsOneWidget);
   });
+}
+
+double? _dryBaselineFor(
+  RenderBox box,
+  BoxConstraints constraints,
+  TextBaseline baseline,
+) {
+  try {
+    return (box as dynamic).getDryBaseline(constraints, baseline) as double?;
+  } on NoSuchMethodError {
+    return null;
+  }
 }
 
 List<String> _visibleReelGlyphsLeftToRight(WidgetTester tester, Finder scope) {

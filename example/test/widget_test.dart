@@ -864,7 +864,12 @@ void main() {
     );
     expect(_semanticButtonWithLabel('Like'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('recipe_spam_button')));
+    final spamButton = find.byKey(const ValueKey('recipe_spam_button'));
+    await tester.ensureVisible(spamButton);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.ancestor(of: spamButton, matching: find.byType(InkWell)),
+    );
     await tester.pump();
     expect(_semanticButtonWithLabel('Liked'), findsOneWidget);
     expect(_semanticButtonWithLabel('Like'), findsNothing);
