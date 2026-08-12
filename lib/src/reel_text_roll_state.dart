@@ -46,27 +46,15 @@ typedef _MeasuredReelTextFrame = ({
   _MeasuredReelTextRun run,
 });
 
-class _SettledReelTextCache {
-  const _SettledReelTextCache({
-    required this.key,
-    required this.measured,
-    required this.child,
-  });
-
-  final _SettledReelTextCacheKey key;
-  final _MeasuredReelTextFrame measured;
-  final Widget child;
-}
-
-class _SettledReelTextCacheKey {
-  const _SettledReelTextCacheKey({
+class _ReelTextMeasureKey {
+  const _ReelTextMeasureKey({
     required this.frame,
     required this.style,
     required this.textDirection,
     required this.locale,
     required this.strutStyle,
     required this.textScaler,
-    required this.widgetSpanMetricsVersion,
+    required this.widgetSpanMetricsRevision,
   });
 
   final _ReelTextFrame frame;
@@ -75,18 +63,18 @@ class _SettledReelTextCacheKey {
   final Locale? locale;
   final StrutStyle? strutStyle;
   final TextScaler textScaler;
-  final int widgetSpanMetricsVersion;
+  final int widgetSpanMetricsRevision;
 
   @override
   bool operator ==(Object other) {
-    return other is _SettledReelTextCacheKey &&
+    return other is _ReelTextMeasureKey &&
         _sameFrameTarget(frame, other.frame) &&
         style == other.style &&
         textDirection == other.textDirection &&
         locale == other.locale &&
         strutStyle == other.strutStyle &&
         textScaler == other.textScaler &&
-        widgetSpanMetricsVersion == other.widgetSpanMetricsVersion;
+        widgetSpanMetricsRevision == other.widgetSpanMetricsRevision;
   }
 
   @override
@@ -98,7 +86,7 @@ class _SettledReelTextCacheKey {
         locale,
         strutStyle,
         textScaler,
-        widgetSpanMetricsVersion,
+        widgetSpanMetricsRevision,
       );
 }
 

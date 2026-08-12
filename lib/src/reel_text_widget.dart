@@ -141,12 +141,9 @@ class _ReelTextState extends State<ReelText>
   _PendingRoll? _pending;
   Timer? _sequenceTimer;
   int _sequenceIndex = 0;
-  int _widgetSpanMetricsVersion = 0;
   int _frameMeasureCount = 0;
-  final _widgetSpanSizes = _WidgetSpanSizeRegistry();
-  final _measuredFrameCache =
-      <_SettledReelTextCacheKey, _MeasuredReelTextFrame>{};
-  _SettledReelTextCache? _settledCache;
+  final _widgetSpans = _WidgetSpanLayoutModel();
+  final _measuredFrameCache = <_ReelTextMeasureKey, _MeasuredReelTextFrame>{};
 
   int get debugFrameMeasureCount => _frameMeasureCount;
 
@@ -384,14 +381,18 @@ class _ReelTextState extends State<ReelText>
 
     Widget child;
     if (roll == null) {
-      final settled = _settledReelTextFor(
+      final measured = _settledReelTextFor(
         frame: _displayedFrame,
         style: style,
         layout: layout,
         textScaler: textScaler,
       );
-      visibleContent = settled.measured.content;
-      child = settled.child;
+      visibleContent = measured.content;
+      child = _SettledReelText(
+        run: measured.run,
+        key: const ValueKey('reel_text_settled'),
+        layout: layout,
+      );
     } else {
       visibleContent = roll.to.content;
       child = _RollingReelText(
@@ -436,76 +437,45 @@ class _ReelTextState extends State<ReelText>
     );
   }
 
-  void _handleWidgetSpanMetricsChanged(
-    int index,
-    WidgetSpan span,
-    _WidgetSpanMetrics metrics,
-  ) {
-    if (!mounted) {
-      return;
-    }
-    if (_widgetSpanSizes.hasMetrics(index, span, metrics)) {
-      return;
-    }
-    setState(() {
-      _widgetSpanSizes.setMetrics(index, span, metrics);
-      _widgetSpanMetricsVersion++;
-      final targetFrame = _targetFrame;
-      final roll = _roll;
-      if (targetFrame != null && roll != null) {
-        _roll = _createRoll(targetFrame, roll.options);
-      }
-    });
-  }
-
   _ReelTextLayoutContext _layoutContextFor(TextDirection direction) {
     return _ReelTextLayoutContext(
       textDirection: direction,
       locale: widget.locale,
       strutStyle: widget.strutStyle,
-      widgetSpanMetricsFor: _widgetSpanSizes.metricsFor,
-      onWidgetSpanMetricsChanged: _handleWidgetSpanMetricsChanged,
+      widgetSpans: _widgetSpans,
     );
   }
 
   _MeasuredReelTextRun _measuredRunFor(
     _ReelTextContent content,
     _ReelTextLayoutContext layout,
+    TextScaler textScaler,
   ) {
     return _MeasuredReelTextRun.of(
-      context: context,
       content: content,
       layout: layout,
+      textScaler: textScaler,
     );
   }
 
-  _SettledReelTextCache _settledReelTextFor({
+  _MeasuredReelTextFrame _settledReelTextFor({
     required _ReelTextFrame frame,
     required TextStyle style,
     required _ReelTextLayoutContext layout,
     required TextScaler textScaler,
   }) {
-    final key = _settledCacheKey(
+    final key = _measureKey(
       frame: frame,
       style: style,
       layout: layout,
       textScaler: textScaler,
     );
-    final cached = _settledCache;
-    if (cached != null && cached.key == key) {
-      return cached;
-    }
-
-    final measured = _measuredFrameFor(
+    return _measuredFrameFor(
       key: key,
       frame: frame,
       style: style,
       layout: layout,
-    );
-    return _cacheSettledFrame(
-      key: key,
-      measured: measured,
-      layout: layout,
+      textScaler: textScaler,
     );
   }
 
@@ -523,8 +493,8 @@ class _ReelTextState extends State<ReelText>
       style: style,
       layout: layout,
       textScaler: textScaler,
-    ).measured;
-    final targetKey = _settledCacheKey(
+    );
+    final targetKey = _measureKey(
       frame: targetFrame,
       style: style,
       layout: layout,
@@ -535,11 +505,7 @@ class _ReelTextState extends State<ReelText>
       frame: targetFrame,
       style: style,
       layout: layout,
-    );
-    _cacheSettledFrame(
-      key: targetKey,
-      measured: to,
-      layout: layout,
+      textScaler: textScaler,
     );
     final plan = _RollPlan.create(
       from: from.run,
@@ -560,21 +526,23 @@ class _ReelTextState extends State<ReelText>
     _ReelTextFrame frame,
     TextStyle style,
     _ReelTextLayoutContext layout,
+    TextScaler textScaler,
   ) {
     _frameMeasureCount++;
     final content = frame.contentFor(style);
     return (
       frame: frame,
       content: content,
-      run: _measuredRunFor(content, layout),
+      run: _measuredRunFor(content, layout, textScaler),
     );
   }
 
   _MeasuredReelTextFrame _measuredFrameFor({
-    required _SettledReelTextCacheKey key,
+    required _ReelTextMeasureKey key,
     required _ReelTextFrame frame,
     required TextStyle style,
     required _ReelTextLayoutContext layout,
+    required TextScaler textScaler,
   }) {
     final cached = _measuredFrameCache.remove(key);
     if (cached != null) {
@@ -582,7 +550,7 @@ class _ReelTextState extends State<ReelText>
       return cached;
     }
 
-    final measured = _measureFrame(frame, style, layout);
+    final measured = _measureFrame(frame, style, layout, textScaler);
     _measuredFrameCache[key] = measured;
     if (_measuredFrameCache.length > _maxMeasuredFrameCacheEntries) {
       _measuredFrameCache.remove(_measuredFrameCache.keys.first);
@@ -590,39 +558,21 @@ class _ReelTextState extends State<ReelText>
     return measured;
   }
 
-  _SettledReelTextCacheKey _settledCacheKey({
+  _ReelTextMeasureKey _measureKey({
     required _ReelTextFrame frame,
     required TextStyle style,
     required _ReelTextLayoutContext layout,
     required TextScaler textScaler,
   }) {
-    return _SettledReelTextCacheKey(
+    return _ReelTextMeasureKey(
       frame: frame,
       style: style,
       textDirection: layout.textDirection,
       locale: layout.locale,
       strutStyle: layout.strutStyle,
       textScaler: textScaler,
-      widgetSpanMetricsVersion: _widgetSpanMetricsVersion,
+      widgetSpanMetricsRevision: _widgetSpans.revision,
     );
-  }
-
-  _SettledReelTextCache _cacheSettledFrame({
-    required _SettledReelTextCacheKey key,
-    required _MeasuredReelTextFrame measured,
-    required _ReelTextLayoutContext layout,
-  }) {
-    final next = _SettledReelTextCache(
-      key: key,
-      measured: measured,
-      child: _SettledReelText(
-        run: measured.run,
-        key: const ValueKey('reel_text_settled'),
-        layout: layout,
-      ),
-    );
-    _settledCache = next;
-    return next;
   }
 
   bool _canReplaceWithoutRoll(_ReelTextFrame targetFrame,

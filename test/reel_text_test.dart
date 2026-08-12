@@ -868,10 +868,11 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(tester.getSize(find.byKey(reelKey)).width, boxWidth);
+    final settledSurface = tester.renderObject(
+      find.byKey(const ValueKey('reel_text_settled_glyphs')),
+    ) as dynamic;
     expect(
-      tester
-          .getSize(find.byKey(const ValueKey('reel_text_settled_glyphs')))
-          .width,
+      settledSurface.debugNaturalRowWidth as double,
       greaterThan(boxWidth),
     );
   });
@@ -909,15 +910,16 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(tester.getSize(find.byKey(reelKey)).width, boxWidth);
     expect(tester.getSize(find.byKey(widgetKey)).width, 96);
+    final settledSurface = tester.renderObject(
+      find.byKey(const ValueKey('reel_text_settled_glyphs')),
+    ) as dynamic;
     expect(
-      tester
-          .getSize(find.byKey(const ValueKey('reel_text_settled_glyphs')))
-          .width,
+      settledSurface.debugNaturalRowWidth as double,
       greaterThan(boxWidth),
     );
   });
 
-  testWidgets('WidgetSpan reports natural height before cached measurement', (
+  testWidgets('WidgetSpan uses its natural height in the first layout pass', (
     tester,
   ) async {
     const reelKey = ValueKey('reel_tall_widget_settled');
@@ -943,9 +945,6 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
-    await tester.pump();
-
     expect(tester.takeException(), isNull);
     expect(tester.getSize(find.byKey(widgetKey)).height, 64);
     expect(
@@ -1078,7 +1077,7 @@ void main() {
 
     final rolling = find.byKey(const ValueKey('reel_text_rolling'));
 
-    expect(find.byType(AnimatedBuilder), findsOneWidget);
+    expect(find.byType(AnimatedBuilder), findsNothing);
     expect(
       find.descendant(
         of: rolling,
@@ -1086,10 +1085,8 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(
-      find.descendant(of: rolling, matching: find.byType(Text)),
-      findsNWidgets(2),
-    );
+    expect(find.descendant(of: rolling, matching: find.byType(Text)),
+        findsNothing);
   });
 
   testWidgets('rolling RTL text slots paint without slot builders', (
@@ -1113,7 +1110,7 @@ void main() {
 
     final rolling = find.byKey(const ValueKey('reel_text_rolling'));
 
-    expect(find.byType(AnimatedBuilder), findsOneWidget);
+    expect(find.byType(AnimatedBuilder), findsNothing);
     expect(
       find.descendant(
         of: rolling,
@@ -1397,13 +1394,6 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    final settledFaceWidths = tester
-        .widgetList<OverflowBox>(find.byType(OverflowBox))
-        .map((box) => box.maxWidth)
-        .whereType<double>()
-        .where((width) => width.isFinite)
-        .toList();
-
     expect(
       tester.getSize(find.byKey(reelKey)).width,
       closeTo(painter.size.width, 0.01),
@@ -1414,7 +1404,10 @@ void main() {
           .width,
       closeTo(painter.size.width, 0.01),
     );
-    expect(settledFaceWidths, contains(greaterThan(painter.size.width + 3)));
+    final settledSurface = tester.renderObject(
+      find.byKey(const ValueKey('reel_text_settled_glyphs')),
+    ) as dynamic;
+    expect(settledSurface.debugHorizontalBleed as double, greaterThan(3));
   });
 
   testWidgets('internal glyph text ignores inherited textAlign', (
@@ -1433,17 +1426,15 @@ void main() {
       ),
     );
 
-    final glyphTexts = tester
-        .widgetList<Text>(
-          find.descendant(of: find.byType(ReelText), matching: find.text('0')),
-        )
-        .toList();
-
-    expect(glyphTexts, isNotEmpty);
     expect(
-      glyphTexts.every((text) => text.textAlign == TextAlign.start),
-      isTrue,
+      find.descendant(of: find.byType(ReelText), matching: find.byType(Text)),
+      findsNothing,
     );
+    final positions = _visibleReelGlyphPositionsLeftToRight(
+      tester,
+      find.byType(ReelText),
+    );
+    expect(positions.single.text, '0');
   });
 
   testWidgets('complex emoji clusters match Text size and roll safely', (
@@ -1589,10 +1580,13 @@ void main() {
     final glyphRow = tester.getRect(
       find.byKey(const ValueKey('reel_text_settled_glyphs')),
     );
-    final visualGlyph = tester.getRect(find.text('👍🏽'));
+    final visualGlyphRight = _rightOfGlyph(
+      _visibleReelGlyphPositionsLeftToRight(tester, find.byType(ReelText)),
+      '👍🏽',
+    );
 
     expect(glyphRow.right, closeTo(box.right, 0.01));
-    expect(visualGlyph.right, greaterThanOrEqualTo(box.right));
+    expect(visualGlyphRight, greaterThanOrEqualTo(box.right));
   });
 
   testWidgets('rich text keeps styled spans selectable as one text run', (
@@ -2229,7 +2223,43 @@ void main() {
     expect(find.byKey(widgetKey), findsNothing);
   });
 
-  testWidgets('rich text updates active roll when WidgetSpan size arrives', (
+  testWidgets('text replacement removes the old WidgetSpan on the roll frame', (
+    tester,
+  ) async {
+    const widgetKey = ValueKey('reel_rich_replaced_widget_span_child');
+    const options = ReelTextOptions(
+      duration: Duration(milliseconds: 140),
+      stagger: Duration.zero,
+      exitOffset: Duration.zero,
+    );
+    const fromSpan = TextSpan(
+      children: [
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SizedBox(key: widgetKey, width: 18, height: 18),
+        ),
+      ],
+    );
+    const toSpan = TextSpan(text: 'A');
+
+    Widget frame(InlineSpan span) {
+      return MaterialApp(
+        home: Center(
+          child: ReelText.rich(span, options: options),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(fromSpan));
+    expect(find.byKey(widgetKey), findsOneWidget);
+
+    await tester.pumpWidget(frame(toSpan));
+
+    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    expect(find.byKey(widgetKey), findsNothing);
+  });
+
+  testWidgets('rolling width includes WidgetSpan in the first layout pass', (
     tester,
   ) async {
     const reelKey = ValueKey('reel_rich_late_widget_size');
@@ -2272,10 +2302,6 @@ void main() {
     await tester.pumpWidget(frame(toSpan));
     expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
 
-    await tester.pump();
-    await tester.pump();
-    expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
-
     final rollingWidth = tester.getSize(find.byKey(reelKey)).width;
 
     await tester.pumpAndSettle();
@@ -2316,11 +2342,9 @@ void main() {
     }
 
     await tester.pumpWidget(frame(spanFor(narrowKey, 20)));
-    await tester.pump();
     expect(tester.getSize(find.byKey(narrowKey)).width, 20);
 
     await tester.pumpWidget(frame(spanFor(wideKey, 84)));
-    await tester.pump();
 
     expect(find.byKey(narrowKey), findsNothing);
     expect(tester.getSize(find.byKey(wideKey)).width, 84);
@@ -2361,12 +2385,9 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
-    await tester.pump();
     expect(tester.getSize(find.byKey(widgetKey)).width, 20);
 
     width.value = 84;
-    await tester.pump();
     await tester.pump();
 
     expect(tester.takeException(), isNull);
@@ -2424,15 +2445,10 @@ void main() {
     }
 
     await tester.pumpWidget(frame());
-    await tester.pump();
-    await tester.pump();
     final initialSelectionRight = selectionRight();
 
     await tester.pumpWidget(frame());
     expect(selectionRight(), closeTo(initialSelectionRight, 1.0));
-
-    await tester.pump();
-    await tester.pump();
 
     expect(tester.takeException(), isNull);
     expect(tester.getSize(find.byKey(widgetKey)).width, 48);
@@ -2477,12 +2493,9 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
-    await tester.pump();
     final expandedWidth = tester.getSize(find.byKey(reelKey)).width;
 
     width.value = 0;
-    await tester.pump();
     await tester.pump();
 
     expect(tester.takeException(), isNull);
@@ -2843,8 +2856,6 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
-
     final paragraph = tester.renderObject<RenderParagraph>(
       find.byKey(const ValueKey('reel_text_selection_surface')),
     );
@@ -3194,10 +3205,13 @@ void main() {
     final glyphRow = tester.getRect(
       find.byKey(const ValueKey('reel_text_settled_glyphs')),
     );
-    final lastGlyph = tester.getRect(find.text('o'));
+    final lastGlyphRight = _rightOfGlyph(
+      _visibleReelGlyphPositionsLeftToRight(tester, find.byType(ReelText)),
+      'o',
+    );
 
     expect(glyphRow.right, closeTo(box.right, 0.01));
-    expect(lastGlyph.right, greaterThanOrEqualTo(box.right));
+    expect(lastGlyphRight, greaterThanOrEqualTo(box.right));
   });
 
   testWidgets('textAlign start and end respect RTL direction', (tester) async {
@@ -3264,11 +3278,17 @@ void main() {
       await tester.pumpWidget(wrap('אבג'));
       await tester.pump(const Duration(milliseconds: 60));
 
-      final duringRight = tester.getRect(find.text('א')).right;
+      final duringRight = _rightOfGlyph(
+        _visibleReelGlyphPositionsLeftToRight(tester, find.byType(ReelText)),
+        'א',
+      );
 
       await tester.pumpAndSettle();
 
-      final settledRight = tester.getRect(find.text('א')).right;
+      final settledRight = _rightOfGlyph(
+        _visibleReelGlyphPositionsLeftToRight(tester, find.byType(ReelText)),
+        'א',
+      );
       expect(duringRight, closeTo(settledRight, 0.01));
     },
   );
@@ -3338,10 +3358,13 @@ void main() {
 
     final box = tester.getRect(find.byKey(boxKey));
     final reel = tester.getRect(find.byKey(reelKey));
-    final lastGlyph = tester.getRect(find.text('o'));
+    final lastGlyphRight = _rightOfGlyph(
+      _visibleReelGlyphPositionsLeftToRight(tester, find.byKey(reelKey)),
+      'o',
+    );
 
     expect(reel.width, closeTo(painter.size.width, 0.01));
-    expect(lastGlyph.right, lessThan(box.right));
+    expect(lastGlyphRight, lessThan(box.right));
   });
 
   testWidgets(
@@ -3376,11 +3399,17 @@ void main() {
       await tester.pumpWidget(wrap('Save'));
       await tester.pump(const Duration(milliseconds: 60));
 
-      final duringLeft = tester.getRect(find.text('S')).left;
+      final duringLeft = _leftOfGlyph(
+        _visibleReelGlyphPositionsLeftToRight(tester, find.byType(ReelText)),
+        'S',
+      );
 
       await tester.pumpAndSettle();
 
-      final settledLeft = tester.getRect(find.text('S')).left;
+      final settledLeft = _leftOfGlyph(
+        _visibleReelGlyphPositionsLeftToRight(tester, find.byType(ReelText)),
+        'S',
+      );
       expect(duringLeft, closeTo(settledLeft, 0.01));
     },
   );
@@ -3564,17 +3593,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 105));
 
     expect(tester.getSize(find.byKey(reelKey)), settledSize);
-    final clip = tester.widget<ClipRect>(find.byType(ClipRect).first);
-    final rect = clip.clipper!.getClip(settledSize);
+    final rollingSurface = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+    );
+    final rect = (rollingSurface as dynamic).debugVerticalClipRect as Rect;
 
     expect(rect.top, lessThan(0));
     expect(rect.bottom, greaterThan(settledSize.height));
 
-    final rollingSlot = tester.renderObject<RenderBox>(
-      find.byKey(const ValueKey('reel_text_rolling_text_slot')).first,
-    );
     expect(
-      rollingSlot,
+      rollingSurface,
       paints
         ..something((methodName, arguments) {
           if (methodName != #saveLayer) {
@@ -3583,7 +3611,7 @@ void main() {
           final bounds = arguments.first as Rect?;
           return bounds != null &&
               bounds.top < 0 &&
-              bounds.bottom > rollingSlot.size.height;
+              bounds.bottom > rollingSurface.size.height;
         }),
     );
   });
@@ -3612,12 +3640,10 @@ void main() {
       await tester.pumpWidget(frame(''));
       await tester.pumpWidget(frame('f'));
 
-      final clipFinder = find.byType(ClipRect).first;
-      final clip = tester.widget<ClipRect>(clipFinder);
-      final clipRect = clip.clipper!.getClip(tester.getSize(clipFinder));
       final rollingSlotRender = tester.renderObject(
         find.byKey(const ValueKey('reel_text_rolling_text_slot')),
       ) as dynamic;
+      final clipRect = rollingSlotRender.debugVerticalClipRect as Rect;
 
       expect(rollingSlotRender.debugIncomingY, greaterThan(clipRect.bottom));
     },
@@ -3983,7 +4009,10 @@ void main() {
 
     expect(progress.isActive, isTrue);
     expect(controller.value, 'Exporter');
-    expect(find.byType(ClipRect), findsNWidgets(2));
+    expect(
+      find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+      findsOneWidget,
+    );
 
     await tester.pump(const Duration(milliseconds: 80));
     expect(controller.value, 'Exported');
@@ -4307,11 +4336,15 @@ List<_GlyphPosition> _visibleReelGlyphPositionsLeftToRight(
     if (rect.bottom <= scopeRect.top || rect.top >= scopeRect.bottom) {
       continue;
     }
-    entries.add(_GlyphPosition(text, rect.left, entries.length));
+    entries.add(_GlyphPosition(text, rect.left, rect.right, entries.length));
   }
   final paintedSlotFinder = find.descendant(
     of: scope,
-    matching: find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget.key == const ValueKey('reel_text_rolling_text_slot') ||
+          widget.key == const ValueKey('reel_text_settled_glyphs'),
+    ),
   );
   for (final element in paintedSlotFinder.evaluate()) {
     final renderObject = element.findRenderObject();
@@ -4332,7 +4365,8 @@ List<_GlyphPosition> _visibleReelGlyphPositionsLeftToRight(
         continue;
       }
       final left = slotTopLeft.dx + (bound['left'] as double);
-      entries.add(_GlyphPosition(text, left, entries.length));
+      final right = slotTopLeft.dx + (bound['right'] as double);
+      entries.add(_GlyphPosition(text, left, right, entries.length));
     }
   }
 
@@ -4363,6 +4397,10 @@ int _debugPreparedFaceLayoutCount(RenderBox renderObject) {
 
 double _leftOfGlyph(List<_GlyphPosition> entries, String glyph) {
   return entries.singleWhere((entry) => entry.text == glyph).left;
+}
+
+double _rightOfGlyph(List<_GlyphPosition> entries, String glyph) {
+  return entries.singleWhere((entry) => entry.text == glyph).right;
 }
 
 List<String> _textPainterGlyphsLeftToRight({
@@ -4403,7 +4441,7 @@ List<String> _textPainterGlyphsLeftToRight({
             double.infinity,
             (value, box) => math.min(value, math.min(box.left, box.right)),
           );
-    entries.add(_GlyphPosition(glyph, left, index));
+    entries.add(_GlyphPosition(glyph, left, left, index));
     index++;
   }
 
@@ -4420,10 +4458,11 @@ int _compareGlyphPositions(_GlyphPosition a, _GlyphPosition b) {
 }
 
 class _GlyphPosition {
-  const _GlyphPosition(this.text, this.left, this.sourceOrder);
+  const _GlyphPosition(this.text, this.left, this.right, this.sourceOrder);
 
   final String text;
   final double left;
+  final double right;
   final int sourceOrder;
 }
 
