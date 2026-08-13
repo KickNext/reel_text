@@ -7,6 +7,7 @@ import 'package:reel_text/reel_text.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
 
   testWidgets('captures stable ReelText rendering on Android', (tester) async {
     if (Platform.isAndroid) {
@@ -26,8 +27,22 @@ void main() {
       'PERFORMANCE',
     );
     expect(find.byKey(const ValueKey('reel_text_rolling')), findsOneWidget);
+    await binding.delayed(const Duration(milliseconds: 220));
+    await binding.takeScreenshot('visual_matrix_rolling');
     await tester.pumpAndSettle();
     await binding.takeScreenshot('visual_matrix_target');
+
+    await tester.pumpWidget(const _ChromaticVisualApp());
+    await tester.pumpAndSettle();
+    tester
+        .state<_ChromaticVisualAppState>(find.byType(_ChromaticVisualApp))
+        .roll();
+    await tester.pump();
+    await binding.delayed(const Duration(milliseconds: 300));
+    await binding.takeScreenshot('chromatic_rolling_color');
+    await binding.delayed(const Duration(milliseconds: 900));
+    await binding.takeScreenshot('chromatic_rolling_fade');
+    await tester.pumpAndSettle();
 
     await tester.pumpWidget(const _SelectionPaintApp(selectionEnabled: false));
     await tester.pumpAndSettle();
@@ -37,6 +52,49 @@ void main() {
     await tester.pumpAndSettle();
     await binding.takeScreenshot('selection_paint_surface');
   });
+}
+
+class _ChromaticVisualApp extends StatefulWidget {
+  const _ChromaticVisualApp();
+
+  @override
+  State<_ChromaticVisualApp> createState() => _ChromaticVisualAppState();
+}
+
+class _ChromaticVisualAppState extends State<_ChromaticVisualApp> {
+  var _rolled = false;
+
+  void roll() => setState(() => _rolled = true);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xffe8edf5),
+        body: Center(
+          child: ReelText(
+            _rolled ? '22222' : '11111',
+            options: const ReelTextOptions(
+              duration: Duration(milliseconds: 800),
+              stagger: Duration.zero,
+              exitOffset: Duration.zero,
+              curve: Threshold(0.05),
+              bounce: 0,
+              color: Color(0xffe84a72),
+              colorFade: Duration(milliseconds: 800),
+              skipUnchanged: false,
+            ),
+            style: const TextStyle(
+              fontSize: 72,
+              fontWeight: FontWeight.w900,
+              color: Color(0xff172033),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _VisualMatrixApp extends StatefulWidget {

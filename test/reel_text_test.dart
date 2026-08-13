@@ -1340,7 +1340,9 @@ void main() {
     expect(reelSize.height, closeTo(slotSize.height, 0.01));
   });
 
-  testWidgets('painted rolling slots dispose text painters', (tester) async {
+  testWidgets('colored rolling slots cache faces until their color fade', (
+    tester,
+  ) async {
     const options = ReelTextOptions(
       duration: Duration(milliseconds: 160),
       stagger: Duration.zero,
@@ -1367,6 +1369,13 @@ void main() {
     );
 
     expect(_debugPreparedFaceLayoutCount(slot), greaterThan(0));
+    expect(
+      (slot as dynamic).debugDisposedTransientFaceLayoutCount as int,
+      0,
+    );
+
+    await tester.pump(const Duration(milliseconds: 240));
+
     expect(
       (slot as dynamic).debugDisposedTransientFaceLayoutCount as int,
       greaterThan(0),
@@ -2018,9 +2027,9 @@ void main() {
     );
 
     TextSpan spanFor({required bool widgetAtEnd}) {
-      final widget = WidgetSpan(
+      const widget = WidgetSpan(
         alignment: PlaceholderAlignment.middle,
-        child: const SizedBox(key: widgetKey, width: 18, height: 18),
+        child: SizedBox(key: widgetKey, width: 18, height: 18),
       );
       return TextSpan(
         children: widgetAtEnd
@@ -2505,14 +2514,14 @@ void main() {
     const widgetKey = ValueKey('reel_rich_recreated_widget_child');
 
     TextSpan spanFor() {
-      return TextSpan(
+      return const TextSpan(
         children: [
-          const TextSpan(text: 'ETA '),
+          TextSpan(text: 'ETA '),
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
-            child: const SizedBox(key: widgetKey, width: 48, height: 18),
+            child: SizedBox(key: widgetKey, width: 48, height: 18),
           ),
-          const TextSpan(text: ' ok'),
+          TextSpan(text: ' ok'),
         ],
       );
     }
