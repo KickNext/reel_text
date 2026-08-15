@@ -19,7 +19,10 @@ jobs:
           cache: true
 
       - name: Install package dependencies
-        run: flutter pub get --no-example
+        run: dart pub get --no-example
+
+      - name: Verify dependency setup leaves checkout clean
+        run: git diff --exit-code
 
       - name: Analyze package
         run: flutter analyze --no-pub lib
@@ -35,29 +38,35 @@ jobs:
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          channel: stable
+          flutter-version: 3.47.0
           cache: true
 
       - name: Install package dependencies
-        run: flutter pub get
+        run: dart pub get --no-example
 
       - name: Install example dependencies
         working-directory: example
         run: flutter pub get
 
+      - name: Verify dependency setup leaves checkout clean
+        run: git diff --exit-code
+
       - name: Analyze package
-        run: flutter analyze
+        run: flutter analyze --no-pub
 
       - name: Analyze example
         working-directory: example
-        run: flutter analyze
+        run: flutter analyze --no-pub
 
       - name: Test package
-        run: flutter test
+        run: flutter test --no-pub
 
       - name: Test example
         working-directory: example
-        run: flutter test
+        run: flutter test --no-pub
+
+      - name: Verify tests leave checkout clean
+        run: git diff --exit-code
 
       - name: Publish dry-run
         run: dart pub publish --dry-run
