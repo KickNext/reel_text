@@ -1,4 +1,5 @@
 *.iml
+*.log
 .dart_tool/
 .flutter-plugins-dependencies
 .agent/
@@ -9,6 +10,7 @@
 build/
 coverage/
 docs/
+/output/
 example/android/
 example/ios/
 example/linux/
