@@ -4622,42 +4622,49 @@ void main() {
     testWidgets('baseline rows inside SelectionArea lay out cleanly', (
       tester,
     ) async {
-      await tester.pumpWidget(MaterialApp(
-        home: SelectionArea(
-          child: Center(
-            child: IntrinsicHeight(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: const [
-                  Text('Label', style: TextStyle(fontSize: 14)),
-                  ReelText(
-                    '42',
-                    key: reelKey,
-                    style: TextStyle(fontSize: 30),
-                  ),
-                ],
-              ),
+      Widget frame({required bool intrinsic}) {
+        final row = Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: const [
+            Text('Label', style: TextStyle(fontSize: 14)),
+            ReelText('42', key: reelKey, style: TextStyle(fontSize: 30)),
+          ],
+        );
+        return MaterialApp(
+          home: SelectionArea(
+            child: Center(
+              child: intrinsic ? IntrinsicHeight(child: row) : row,
             ),
           ),
-        ),
-      ));
+        );
+      }
 
+      await tester.pumpWidget(frame(intrinsic: false));
+      expect(tester.takeException(), isNull);
+      final settledBaseline = _dryBaselineOf(
+        tester.renderObject<RenderBox>(find.byKey(reelKey)),
+      );
+      expect(tester.takeException(), isNull);
+      if (settledBaseline == null) {
+        // Flutter before 3.24 has no dry-baseline API, and its Row cannot
+        // compute intrinsics for baseline alignment at all, so the
+        // IntrinsicHeight scenario below does not exist there.
+        return;
+      }
+
+      await tester.pumpWidget(frame(intrinsic: true));
       expect(tester.takeException(), isNull);
       final label = tester.renderObject<RenderBox>(find.text('Label'));
       final reel = tester.renderObject<RenderBox>(find.byKey(reelKey));
-      final labelBaseline = _dryBaselineOf(label);
-      final reelBaseline = _dryBaselineOf(reel);
+      final labelBaseline = _dryBaselineOf(label)!;
+      final reelBaseline = _dryBaselineOf(reel)!;
       expect(tester.takeException(), isNull);
-      // Flutter 3.16 has no dry-baseline API; newer SDKs must agree on the
-      // baseline the Row aligned both children to.
-      if (labelBaseline != null && reelBaseline != null) {
-        expect(
-          tester.getTopLeft(find.byKey(reelKey)).dy + reelBaseline,
-          closeTo(tester.getTopLeft(find.text('Label')).dy + labelBaseline, 0.01),
-        );
-      }
+      expect(
+        tester.getTopLeft(find.byKey(reelKey)).dy + reelBaseline,
+        closeTo(tester.getTopLeft(find.text('Label')).dy + labelBaseline, 0.01),
+      );
     });
 
     testWidgets('baseline WidgetSpan without a baseline survives intrinsics', (
