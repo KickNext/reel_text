@@ -151,6 +151,7 @@ class _ReelTextState extends State<ReelText>
   bool _inheritedBoldText = false;
   final _widgetSpans = _WidgetSpanLayoutModel();
   final _measuredFrameCache = <_ReelTextMeasureKey, _MeasuredReelTextFrame>{};
+  final _surfaceKey = GlobalKey(debugLabel: 'reel_text_surface');
 
   int get debugFrameMeasureCount => _frameMeasureCount;
 
@@ -441,6 +442,7 @@ class _ReelTextState extends State<ReelText>
       );
       visibleContent = measured.content;
       child = _SettledReelText(
+        surfaceKey: _surfaceKey,
         run: measured.run,
         key: const ValueKey('reel_text_settled'),
         layout: layout,
@@ -448,6 +450,7 @@ class _ReelTextState extends State<ReelText>
     } else {
       visibleContent = roll.to.content;
       child = _RollingReelText(
+        surfaceKey: _surfaceKey,
         plan: roll.plan,
         defaultTextColor: style.color ?? Colors.black,
         fromRun: roll.from.run,

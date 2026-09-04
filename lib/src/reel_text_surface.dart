@@ -221,6 +221,35 @@ double _horizontalTextTokenBleed(double height) => math.max(4, height * 0.08);
 
 enum _ReelPreparedFaceLane { settled, from, to, coloredTo }
 
+/// Identity of a prepared face: everything [_RenderReelTextSurface._createFace]
+/// bakes into the painter apart from the layout context, which clears the
+/// whole cache when it changes.
+class _PreparedFaceKey {
+  const _PreparedFaceKey({
+    required this.text,
+    required this.style,
+    required this.width,
+    required this.height,
+  });
+
+  final String text;
+  final TextStyle style;
+  final double width;
+  final double height;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _PreparedFaceKey &&
+        other.text == text &&
+        other.width == width &&
+        other.height == height &&
+        other.style == style;
+  }
+
+  @override
+  int get hashCode => Object.hash(text, width, height, style);
+}
+
 class _RenderReelTextSurface extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, TextParentData>,
@@ -242,6 +271,13 @@ class _RenderReelTextSurface extends RenderBox
   List<_PreparedTextFace?>? _fromFaces;
   List<_PreparedTextFace?>? _toFaces;
   List<_PreparedTextFace?>? _coloredToFaces;
+
+  /// Prepared faces keyed by their layout inputs. The lane lists above only
+  /// index into this map, which survives settled/rolling data swaps so that
+  /// repeated rolls (counters cycling through the same glyphs) reuse laid-out
+  /// text instead of laying it out again on every transition.
+  final _faceCache = <_PreparedFaceKey, _PreparedTextFace>{};
+  static const _minCachedFaces = 96;
   var _preparedFaceLayoutCount = 0;
   var _disposedPreparedFaceLayoutCount = 0;
   var _disposedTransientFaceLayoutCount = 0;
@@ -265,11 +301,25 @@ class _RenderReelTextSurface extends RenderBox
       previousAnimation?.removeListener(_handleAnimationTick);
       nextAnimation?.addListener(_handleAnimationTick);
     }
+    final layoutChanged = !_sameFaceLayoutInputs(_data.layout, value.layout);
     _data = value;
     _invalidateMeasuredRuns();
-    _clearPreparedFaces();
+    if (layoutChanged) {
+      _clearPreparedFaces();
+    } else {
+      _resetFaceLanes();
+    }
     markNeedsLayout();
     markNeedsPaint();
+  }
+
+  bool _sameFaceLayoutInputs(
+    _ReelTextLayoutContext previous,
+    _ReelTextLayoutContext next,
+  ) {
+    return previous.textDirection == next.textDirection &&
+        previous.locale == next.locale &&
+        previous.strutStyle == next.strutStyle;
   }
 
   bool _hasSameRenderInputs(
@@ -363,7 +413,9 @@ class _RenderReelTextSurface extends RenderBox
   @override
   void detach() {
     _data.animation?.removeListener(_handleAnimationTick);
-    _clearPreparedFaces();
+    // Prepared faces are plain TextPainters with no owner-bound resources, so
+    // they survive the reparenting that happens when the surface moves
+    // between the settled and rolling subtrees. dispose() releases them.
     super.detach();
   }
 
@@ -374,8 +426,31 @@ class _RenderReelTextSurface extends RenderBox
   }
 
   void _handleAnimationTick() {
+    if (_repaintWithoutLayout()) {
+      markNeedsPaint();
+      return;
+    }
     markNeedsLayout();
     markNeedsPaint();
+  }
+
+  /// Advances the rolling geometry to the current animation value and
+  /// reports whether the natural (unconstrained) size is unchanged, in which
+  /// case neither this box nor any ancestor that depends on its intrinsics
+  /// can change, so the tick only needs a repaint. Inline widgets are
+  /// positioned during layout, so rows containing them always relayout.
+  bool _repaintWithoutLayout() {
+    final laidOut = _laidOutGeometry;
+    if (laidOut == null || !hasSize || _data.hasWidgetSlots) {
+      return false;
+    }
+    final previous = Size(laidOut.desiredWidth, laidOut.height);
+    final geometry = _geometry(reuse: laidOut);
+    if (Size(geometry.desiredWidth, geometry.height) != previous) {
+      return false;
+    }
+    _laidOutGeometry = geometry;
+    return true;
   }
 
   void _invalidateMeasuredRuns() {
@@ -1100,18 +1175,27 @@ class _RenderReelTextSurface extends RenderBox
     required double width,
     Color? overrideColor,
   }) {
-    final cache = _preparedFaceCache(lane);
-    final cached = cache[item];
+    final lanes = _preparedFaceCache(lane);
+    final cached = lanes[item];
     if (cached != null) {
       return cached;
     }
-    _preparedFaceLayoutCount++;
-    return cache[item] = _createFace(
+    final effectiveStyle =
+        overrideColor == null ? style : style.copyWith(color: overrideColor);
+    final key = _PreparedFaceKey(
       text: text,
-      style:
-          overrideColor == null ? style : style.copyWith(color: overrideColor),
+      style: effectiveStyle,
       width: width,
+      height: _height,
     );
+    var face = _faceCache.remove(key);
+    if (face == null) {
+      _preparedFaceLayoutCount++;
+      face = _createFace(text: text, style: effectiveStyle, width: width);
+    }
+    // Re-inserting keeps the map ordered by recency for eviction.
+    _faceCache[key] = face;
+    return lanes[item] = face;
   }
 
   List<_PreparedTextFace?> _preparedFaceCache(
@@ -1311,28 +1395,36 @@ class _RenderReelTextSurface extends RenderBox
         : 0;
   }
 
-  void _clearPreparedFaces() {
-    for (final cache in <List<_PreparedTextFace?>?>[
-      _settledFaces,
-      _fromFaces,
-      _toFaces,
-      _coloredToFaces,
-    ]) {
-      if (cache == null) {
-        continue;
-      }
-      for (final face in cache) {
-        if (face == null) {
-          continue;
-        }
-        face.dispose();
-        _disposedPreparedFaceLayoutCount++;
-      }
-    }
+  int get _laneItemCount => _data.isRolling
+      ? _data.plan!.slots.length
+      : _data.settledRun!.visualOrder.length;
+
+  /// Forgets the per-item lane lookups (they are rebuilt from the cache on the
+  /// next paint) and trims the cache to a bounded size while nothing points
+  /// into it.
+  void _resetFaceLanes() {
     _settledFaces = null;
     _fromFaces = null;
     _toFaces = null;
     _coloredToFaces = null;
+    final capacity = math.max(_minCachedFaces, 4 * _laneItemCount);
+    while (_faceCache.length > capacity) {
+      final oldest = _faceCache.keys.first;
+      _faceCache.remove(oldest)!.dispose();
+      _disposedPreparedFaceLayoutCount++;
+    }
+  }
+
+  void _clearPreparedFaces() {
+    _settledFaces = null;
+    _fromFaces = null;
+    _toFaces = null;
+    _coloredToFaces = null;
+    for (final face in _faceCache.values) {
+      face.dispose();
+      _disposedPreparedFaceLayoutCount++;
+    }
+    _faceCache.clear();
   }
 
   @override
