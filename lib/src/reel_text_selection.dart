@@ -175,6 +175,22 @@ class _RenderReelTextSelectableStack extends RenderBox
     return firstChild?.getDistanceToActualBaseline(baseline);
   }
 
+  // Flutter 3.16 does not declare this hook yet. Keeping the method (and the
+  // ignored annotation) lets newer SDKs use it without dropping 3.16 support.
+  @override
+  // ignore: override_on_non_overriding_member
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) {
+    final visual = firstChild;
+    if (visual == null) {
+      return null;
+    }
+    return (visual as dynamic).getDryBaseline(constraints, baseline)
+        as double?;
+  }
+
   @override
   void paint(PaintingContext context, Offset offset) {
     defaultPaint(context, offset);

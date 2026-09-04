@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -3845,9 +3848,10 @@ void main() {
             return false;
           }
           final bounds = arguments.first as Rect?;
+          // Layer bounds are expressed in the enclosing layer's coordinates,
+          // so the bleed shows up as extra height beyond the row.
           return bounds != null &&
-              bounds.top < 0 &&
-              bounds.bottom > rollingSurface.size.height;
+              bounds.height > rollingSurface.size.height;
         }),
     );
   });
@@ -4543,6 +4547,239 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel('Copied'), findsOneWidget);
   });
+
+  group('unified surface keeps Text-compatible behavior', () {
+    const reelKey = ValueKey('surface_reel');
+    const boundaryKey = ValueKey('surface_boundary');
+
+    Widget host(
+      Widget child, {
+      TextStyle style = const TextStyle(fontSize: 24, color: Colors.black),
+      MediaQueryData media = const MediaQueryData(),
+    }) {
+      return MediaQuery(
+        data: media,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: DefaultTextStyle(
+            style: style,
+            child: Center(
+              child: RepaintBoundary(
+                key: boundaryKey,
+                child: ColoredBox(color: Colors.white, child: child),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('settled and rolling glyphs are hit-testable', (
+      tester,
+    ) async {
+      var taps = 0;
+      await tester.pumpWidget(host(GestureDetector(
+        onTap: () => taps++,
+        child: const ReelText('Tap me', key: reelKey),
+      )));
+      await tester.tap(find.byKey(reelKey));
+      expect(taps, 1);
+
+      final box = tester.renderObject<RenderBox>(find.byKey(reelKey));
+      expect(
+        box.hitTest(
+          BoxHitTestResult(),
+          position: box.size.center(Offset.zero),
+        ),
+        isTrue,
+      );
+
+      await tester.pumpWidget(host(GestureDetector(
+        onTap: () => taps++,
+        child: const ReelText('Tap ok', key: reelKey),
+      )));
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tap(find.byKey(reelKey));
+      expect(taps, 2);
+      await tester.pumpAndSettle();
+
+      var enters = 0;
+      await tester.pumpWidget(host(MouseRegion(
+        onEnter: (_) => enters++,
+        child: const ReelText('Hover me', key: reelKey),
+      )));
+      final gesture = await tester.createGesture(
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(find.byKey(reelKey)));
+      await tester.pump();
+      expect(enters, 1);
+    });
+
+    testWidgets('baseline rows inside SelectionArea lay out cleanly', (
+      tester,
+    ) async {
+      await tester.pumpWidget(MaterialApp(
+        home: SelectionArea(
+          child: Center(
+            child: IntrinsicHeight(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: const [
+                  Text('Label', style: TextStyle(fontSize: 14)),
+                  ReelText(
+                    '42',
+                    key: reelKey,
+                    style: TextStyle(fontSize: 30),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ));
+
+      expect(tester.takeException(), isNull);
+      final label = tester.renderObject<RenderBox>(find.text('Label'));
+      final reel = tester.renderObject<RenderBox>(find.byKey(reelKey));
+      final labelBaseline = _dryBaselineOf(label);
+      final reelBaseline = _dryBaselineOf(reel);
+      expect(tester.takeException(), isNull);
+      // Flutter 3.16 has no dry-baseline API; newer SDKs must agree on the
+      // baseline the Row aligned both children to.
+      if (labelBaseline != null && reelBaseline != null) {
+        expect(
+          tester.getTopLeft(find.byKey(reelKey)).dy + reelBaseline,
+          closeTo(tester.getTopLeft(find.text('Label')).dy + labelBaseline, 0.01),
+        );
+      }
+    });
+
+    testWidgets('baseline WidgetSpan without a baseline survives intrinsics', (
+      tester,
+    ) async {
+      const span = TextSpan(children: [
+        TextSpan(text: 'A'),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: SizedBox(width: 20, height: 20),
+        ),
+        TextSpan(text: 'B'),
+      ]);
+      await tester.pumpWidget(host(const IntrinsicWidth(
+        child: ReelText.rich(span, key: reelKey),
+      )));
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.byKey(reelKey)).width, 68);
+    });
+
+    testWidgets('foreground shaders span the row like Text', (tester) async {
+      final style = TextStyle(
+        fontSize: 24,
+        foreground: Paint()
+          ..shader = ui.Gradient.linear(
+            Offset.zero,
+            const Offset(150, 0),
+            const [Colors.red, Colors.blue],
+          ),
+      );
+      await tester.pumpWidget(host(ReelText('GRADIENT', style: style)));
+      final reel = await _rasterize(tester, boundaryKey);
+      await tester.pumpWidget(host(Text('GRADIENT', style: style)));
+      final text = await _rasterize(tester, boundaryKey);
+
+      expect(_samePixels(reel, text), isTrue);
+    });
+
+    testWidgets('bold text accessibility setting matches Text', (
+      tester,
+    ) async {
+      const media = MediaQueryData(boldText: true);
+      await tester.pumpWidget(host(const ReelText('BOLD 42'), media: media));
+      final bold = await _rasterize(tester, boundaryKey);
+      await tester.pumpWidget(host(const Text('BOLD 42'), media: media));
+      final text = await _rasterize(tester, boundaryKey);
+      await tester.pumpWidget(host(const ReelText('BOLD 42')));
+      final regular = await _rasterize(tester, boundaryKey);
+
+      expect(_samePixels(bold, text), isTrue);
+      expect(_samePixels(bold, regular), isFalse);
+    });
+
+    testWidgets('incoming faces without a colour use the ambient colour', (
+      tester,
+    ) async {
+      const red = TextStyle(fontSize: 24, color: Colors.red);
+      TextSpan span(String text) => TextSpan(
+            text: text,
+            style: const TextStyle(inherit: false, fontSize: 24),
+          );
+      await tester.pumpWidget(host(
+        ReelText.rich(span('A'), key: reelKey),
+        style: red,
+      ));
+      await tester.pumpWidget(host(
+        ReelText.rich(span('B'), key: reelKey),
+        style: red,
+      ));
+      await tester.pump(const Duration(milliseconds: 150));
+      final pixels = await _rasterize(tester, boundaryKey);
+      await tester.pumpAndSettle();
+
+      expect(_countPixels(pixels, _isReddish), greaterThan(0));
+      expect(_countPixels(pixels, _isDark), 0);
+    });
+
+    testWidgets('rolling slot clips are hard-edged', (tester) async {
+      await tester.pumpWidget(host(const ReelText('Ab', key: reelKey)));
+      await tester.pumpWidget(host(const ReelText('Cd', key: reelKey)));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final surface = tester.renderObject<RenderBox>(
+        find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+      );
+      final canvas = TestRecordingCanvas();
+      surface.paint(TestRecordingPaintingContext(canvas), Offset.zero);
+      final clips = canvas.invocations
+          .where((entry) => entry.invocation.memberName == #clipRect)
+          .toList();
+      await tester.pumpAndSettle();
+
+      expect(clips, isNotEmpty);
+      for (final clip in clips) {
+        expect(clip.invocation.namedArguments[#doAntiAlias], isFalse);
+      }
+    });
+
+    testWidgets('text change while reduced motion turns off still rolls', (
+      tester,
+    ) async {
+      const reducedMotion = MediaQueryData(disableAnimations: true);
+      await tester.pumpWidget(host(
+        const ReelText('AA', key: reelKey),
+        media: reducedMotion,
+      ));
+      await tester.pumpWidget(host(const ReelText('BB', key: reelKey)));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(
+        find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+        findsOneWidget,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('reel_text_rolling_text_slot')),
+        findsNothing,
+      );
+    });
+  });
 }
 
 double? _dryBaselineFor(
@@ -4732,3 +4969,54 @@ class _CountingTextScaler extends TextScaler {
   @override
   double get textScaleFactor => 1;
 }
+
+double? _dryBaselineOf(RenderBox box) {
+  try {
+    return (box as dynamic).getDryBaseline(
+      BoxConstraints.loose(box.size),
+      TextBaseline.alphabetic,
+    ) as double?;
+  } on NoSuchMethodError {
+    return null;
+  }
+}
+
+Future<Uint8List> _rasterize(WidgetTester tester, Key boundaryKey) async {
+  final boundary = tester.renderObject<RenderRepaintBoundary>(
+    find.byKey(boundaryKey),
+  );
+  late final Uint8List pixels;
+  await tester.runAsync(() async {
+    final image = await boundary.toImage();
+    final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    pixels = data!.buffer.asUint8List();
+    image.dispose();
+  });
+  return pixels;
+}
+
+bool _samePixels(Uint8List a, Uint8List b) {
+  if (a.length != b.length) {
+    return false;
+  }
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+int _countPixels(Uint8List rgba, bool Function(int r, int g, int b) test) {
+  var count = 0;
+  for (var i = 0; i + 3 < rgba.length; i += 4) {
+    if (test(rgba[i], rgba[i + 1], rgba[i + 2])) {
+      count++;
+    }
+  }
+  return count;
+}
+
+bool _isReddish(int r, int g, int b) => r > 150 && g < 80 && b < 80;
+
+bool _isDark(int r, int g, int b) => r < 40 && g < 40 && b < 40;

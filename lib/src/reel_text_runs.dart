@@ -28,6 +28,7 @@ class _RollingReelText extends StatelessWidget {
     required this.animation,
     required this.textAlign,
     required this.layout,
+    required this.defaultTextColor,
   });
 
   final _RollPlan plan;
@@ -36,6 +37,7 @@ class _RollingReelText extends StatelessWidget {
   final Animation<double> animation;
   final TextAlign textAlign;
   final _ReelTextLayoutContext layout;
+  final Color defaultTextColor;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +52,7 @@ class _RollingReelText extends StatelessWidget {
           animation: animation,
           textAlign: textAlign,
           layout: layout,
+          defaultTextColor: defaultTextColor,
         ),
         textScaler:
             MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling,

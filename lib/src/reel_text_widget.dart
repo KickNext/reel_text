@@ -148,6 +148,7 @@ class _ReelTextState extends State<ReelText>
   Locale? _inheritedLocale;
   TextScaler _inheritedTextScaler = TextScaler.noScaling;
   bool _inheritedAnimationsDisabled = false;
+  bool _inheritedBoldText = false;
   final _widgetSpans = _WidgetSpanLayoutModel();
   final _measuredFrameCache = <_ReelTextMeasureKey, _MeasuredReelTextFrame>{};
 
@@ -193,6 +194,7 @@ class _ReelTextState extends State<ReelText>
         MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
     _inheritedAnimationsDisabled =
         MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    _inheritedBoldText = MediaQuery.maybeBoldTextOf(context) ?? false;
     // Snap an in-flight roll when the platform switches to reduced motion.
     if (_animationsDisabled && _targetFrame != null) {
       _controller.stop();
@@ -207,6 +209,11 @@ class _ReelTextState extends State<ReelText>
   @override
   void didUpdateWidget(covariant ReelText oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // didUpdateWidget runs before didChangeDependencies, so a text change in
+    // the same frame that reduced motion is toggled must not act on the stale
+    // cached value.
+    _inheritedAnimationsDisabled =
+        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (_roll != null &&
         (oldWidget.style != widget.style ||
             oldWidget.textDirection != widget.textDirection ||
@@ -270,6 +277,15 @@ class _ReelTextState extends State<ReelText>
 
   bool get _animationsDisabled =>
       widget.respectDisableAnimations && _inheritedAnimationsDisabled;
+
+  /// Applies the platform "bold text" accessibility setting the way [Text]
+  /// does, so painted faces stay in sync with regular text.
+  TextStyle _applyBoldText(TextStyle style) {
+    if (!_inheritedBoldText) {
+      return style;
+    }
+    return style.merge(const TextStyle(fontWeight: FontWeight.bold));
+  }
 
   void _startSequenceTimerIfNeeded() {
     final values = widget._sequenceValues;
@@ -394,7 +410,7 @@ class _ReelTextState extends State<ReelText>
     final direction = widget.textDirection ?? _inheritedTextDirection;
     final defaultTextStyle = _inheritedDefaultTextStyle;
     final defaultStyle = defaultTextStyle.style;
-    final style = defaultStyle.merge(widget.style);
+    final style = _applyBoldText(defaultStyle.merge(widget.style));
     final effectiveTextAlign =
         widget.textAlign ?? defaultTextStyle.textAlign ?? TextAlign.start;
     final layout = _layoutContextFor(direction);
@@ -433,6 +449,7 @@ class _ReelTextState extends State<ReelText>
       visibleContent = roll.to.content;
       child = _RollingReelText(
         plan: roll.plan,
+        defaultTextColor: style.color ?? Colors.black,
         fromRun: roll.from.run,
         toRun: roll.to.run,
         animation: _controller,
@@ -518,7 +535,7 @@ class _ReelTextState extends State<ReelText>
   _ActiveRoll _createRoll(_ReelTextFrame targetFrame, ReelTextOptions options) {
     final direction = widget.textDirection ?? _inheritedTextDirection;
     final defaultTextStyle = _inheritedDefaultTextStyle;
-    final style = defaultTextStyle.style.merge(widget.style);
+    final style = _applyBoldText(defaultTextStyle.style.merge(widget.style));
     final layout = _layoutContextFor(direction);
     final textScaler = _inheritedTextScaler;
     final fromKey = _measureKey(

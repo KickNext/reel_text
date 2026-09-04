@@ -85,7 +85,8 @@ class _ReelTextSurfaceData {
         fromRun = null,
         toRun = null,
         animation = null,
-        textAlign = TextAlign.start;
+        textAlign = TextAlign.start,
+        defaultTextColor = Colors.black;
 
   const _ReelTextSurfaceData.rolling({
     required _RollPlan this.plan,
@@ -94,6 +95,7 @@ class _ReelTextSurfaceData {
     required Animation<double> this.animation,
     required this.textAlign,
     required this.layout,
+    required this.defaultTextColor,
   }) : settledRun = null;
 
   final _MeasuredReelTextRun? settledRun;
@@ -103,6 +105,11 @@ class _ReelTextSurfaceData {
   final Animation<double>? animation;
   final TextAlign textAlign;
   final _ReelTextLayoutContext layout;
+
+  /// Colour painted for incoming faces whose token style carries no colour
+  /// (for example `inherit: false` spans); mirrors the ambient
+  /// [DefaultTextStyle] colour the way the previous per-slot renderer did.
+  final Color defaultTextColor;
 
   bool get isRolling => plan != null;
 
@@ -277,6 +284,7 @@ class _RenderReelTextSurface extends RenderBox
         identical(previous.toRun, next.toRun) &&
         identical(previous.animation, next.animation) &&
         previous.textAlign == next.textAlign &&
+        previous.defaultTextColor == next.defaultTextColor &&
         previousLayout.textDirection == nextLayout.textDirection &&
         previousLayout.locale == nextLayout.locale &&
         previousLayout.strutStyle == nextLayout.strutStyle &&
@@ -581,6 +589,17 @@ class _RenderReelTextSurface extends RenderBox
     TextBaseline baseline,
     Size childSize,
   ) {
+    // Placeholder children without a baseline (plain boxes) cannot compute a
+    // dry baseline and would throw in debug builds. Flutter's own intrinsic
+    // checks silence that assertion through debugCheckingIntrinsics; do the
+    // same so such children fall back to their bottom edge instead of
+    // failing the whole layout pass.
+    var restoreDebugFlag = false;
+    assert(() {
+      restoreDebugFlag = !RenderObject.debugCheckingIntrinsics;
+      RenderObject.debugCheckingIntrinsics = true;
+      return true;
+    }());
     try {
       final value = (child as dynamic).getDryBaseline(
         childConstraints,
@@ -591,6 +610,13 @@ class _RenderReelTextSurface extends RenderBox
       // Flutter before 3.24 has no dry-baseline API. Its own inline-child
       // helper treated a missing baseline as the bottom of the placeholder.
       return childSize.height;
+    } finally {
+      assert(() {
+        if (restoreDebugFlag) {
+          RenderObject.debugCheckingIntrinsics = false;
+        }
+        return true;
+      }());
     }
   }
 
@@ -841,14 +867,14 @@ class _RenderReelTextSurface extends RenderBox
     final geometry = _currentGeometry;
     final rowLeft = geometry.rowLeftFor(size);
     final canvas = context.canvas;
-    canvas.save();
-    canvas.translate(offset.dx, offset.dy);
+    // Faces are painted in the enclosing layer's coordinate space, like
+    // RenderParagraph does, so style shaders (gradient foregrounds) span the
+    // row instead of restarting on every glyph.
     if (_data.isRolling) {
-      _paintRollingText(canvas, geometry, rowLeft);
+      _paintRollingText(canvas, geometry, rowLeft, offset);
     } else {
-      _paintSettledText(canvas, geometry, rowLeft);
+      _paintSettledText(canvas, geometry, rowLeft, offset);
     }
-    canvas.restore();
     paintInlineChildren(context, offset);
   }
 
@@ -856,6 +882,7 @@ class _RenderReelTextSurface extends RenderBox
     Canvas canvas,
     _ReelTextSurfaceGeometry geometry,
     double rowLeft,
+    Offset origin,
   ) {
     final run = _settledRun;
     for (var item = 0; item < run.visualOrder.length; item++) {
@@ -867,6 +894,7 @@ class _RenderReelTextSurface extends RenderBox
       _paintPreparedFace(
         canvas,
         debugText: token.text,
+        origin: origin,
         face: _preparedFaceAt(
           lane: _ReelPreparedFaceLane.settled,
           item: item,
@@ -887,6 +915,7 @@ class _RenderReelTextSurface extends RenderBox
     Canvas canvas,
     _ReelTextSurfaceGeometry geometry,
     double rowLeft,
+    Offset origin,
   ) {
     final plan = _data.plan!;
     final fromRun = _fromRun;
@@ -915,6 +944,7 @@ class _RenderReelTextSurface extends RenderBox
         _paintPreparedFace(
           canvas,
           debugText: visibleToken.text,
+          origin: origin,
           face: _preparedFaceAt(
             lane: slot.to == null
                 ? _ReelPreparedFaceLane.from
@@ -937,11 +967,12 @@ class _RenderReelTextSurface extends RenderBox
       canvas.save();
       canvas.clipRect(
         Rect.fromLTRB(
-          itemLeft - horizontalBleed,
-          -verticalBleed,
-          itemLeft + itemWidth + horizontalBleed,
-          height + verticalBleed,
+          origin.dx + itemLeft - horizontalBleed,
+          origin.dy - verticalBleed,
+          origin.dx + itemLeft + itemWidth + horizontalBleed,
+          origin.dy + height + verticalBleed,
         ),
+        doAntiAlias: false,
       );
 
       if (slot.from != null && fromToken != null && !fromToken.isWidget) {
@@ -951,6 +982,7 @@ class _RenderReelTextSurface extends RenderBox
         _paintPreparedFace(
           canvas,
           debugText: fromToken.text,
+          origin: origin,
           face: _preparedFaceAt(
             lane: _ReelPreparedFaceLane.from,
             item: item,
@@ -968,7 +1000,8 @@ class _RenderReelTextSurface extends RenderBox
 
       if (slot.to != null && toToken != null && !toToken.isWidget) {
         final targetWidth = toRun.widthFor(slot.to);
-        final defaultTextColor = toToken.style.color ?? Colors.black;
+        final defaultTextColor =
+            toToken.style.color ?? _data.defaultTextColor;
         final inT = slot.inT(progressMs);
         final directionSign =
             slot.direction == ReelTextDirection.down ? -1.0 : 1.0;
@@ -987,6 +1020,7 @@ class _RenderReelTextSurface extends RenderBox
           _paintPreparedFace(
             canvas,
             debugText: toToken.text,
+            origin: origin,
             face: face,
             itemLeft: itemLeft,
             itemWidth: itemWidth,
@@ -1001,6 +1035,7 @@ class _RenderReelTextSurface extends RenderBox
             _paintPreparedFace(
               canvas,
               debugText: toToken.text,
+              origin: origin,
               face: _preparedFaceAt(
                 lane: _ReelPreparedFaceLane.coloredTo,
                 item: item,
@@ -1019,6 +1054,7 @@ class _RenderReelTextSurface extends RenderBox
             _paintPreparedFace(
               canvas,
               debugText: toToken.text,
+              origin: origin,
               face: _preparedFaceAt(
                 lane: _ReelPreparedFaceLane.to,
                 item: item,
@@ -1036,6 +1072,7 @@ class _RenderReelTextSurface extends RenderBox
           } else {
             _paintTransientFace(
               canvas,
+              origin: origin,
               text: toToken.text,
               style: toToken.style.copyWith(
                 color: Color.lerp(color, defaultTextColor, colorT),
@@ -1122,6 +1159,7 @@ class _RenderReelTextSurface extends RenderBox
 
   void _paintTransientFace(
     Canvas canvas, {
+    required Offset origin,
     required String text,
     required TextStyle style,
     required double width,
@@ -1136,6 +1174,7 @@ class _RenderReelTextSurface extends RenderBox
       _paintPreparedFace(
         canvas,
         debugText: text,
+        origin: origin,
         face: face,
         itemLeft: itemLeft,
         itemWidth: itemWidth,
@@ -1152,6 +1191,7 @@ class _RenderReelTextSurface extends RenderBox
   void _paintPreparedFace(
     Canvas canvas, {
     required String debugText,
+    required Offset origin,
     required _PreparedTextFace face,
     required double itemLeft,
     required double itemWidth,
@@ -1175,23 +1215,27 @@ class _RenderReelTextSurface extends RenderBox
       );
       return true;
     }());
-    canvas.save();
-    canvas.translate(
-      itemLeft + faceDx + face.width / 2,
-      dy + face.height / 2,
-    );
-    if (angle != 0) {
+    var paintOrigin = Offset(origin.dx + itemLeft + faceDx, origin.dy + dy);
+    final rotated = angle != 0;
+    if (rotated) {
+      canvas.save();
+      canvas.translate(
+        paintOrigin.dx + face.width / 2,
+        paintOrigin.dy + face.height / 2,
+      );
       canvas.rotate(angle);
+      canvas.translate(-face.width / 2, -face.height / 2);
+      paintOrigin = Offset.zero;
     }
-    canvas.translate(-face.width / 2, -face.height / 2);
-    if (opacity < 0.999) {
+    final translucent = opacity < 0.999;
+    if (translucent) {
       final verticalBleed = _verticalSlotBleed(face.height);
       canvas.saveLayer(
         Rect.fromLTRB(
-          face.paintDx,
-          -verticalBleed,
-          face.paintDx + face.paintWidth,
-          face.height + verticalBleed,
+          paintOrigin.dx + face.paintDx,
+          paintOrigin.dy - verticalBleed,
+          paintOrigin.dx + face.paintDx + face.paintWidth,
+          paintOrigin.dy + face.height + verticalBleed,
         ),
         Paint()
           ..color = Color.fromARGB(
@@ -1202,11 +1246,16 @@ class _RenderReelTextSurface extends RenderBox
           ),
       );
     }
-    face.painter.paint(canvas, Offset(face.paintDx, 0));
-    if (opacity < 0.999) {
+    face.painter.paint(
+      canvas,
+      Offset(paintOrigin.dx + face.paintDx, paintOrigin.dy),
+    );
+    if (translucent) {
       canvas.restore();
     }
-    canvas.restore();
+    if (rotated) {
+      canvas.restore();
+    }
   }
 
   void _recordDebugGlyphBounds({
@@ -1285,6 +1334,9 @@ class _RenderReelTextSurface extends RenderBox
     _toFaces = null;
     _coloredToFaces = null;
   }
+
+  @override
+  bool hitTestSelf(Offset position) => true;
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
