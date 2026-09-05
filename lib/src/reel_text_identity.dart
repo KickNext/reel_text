@@ -1,24 +1,7 @@
 part of 'reel_text.dart';
 
-class _WidgetSpanIdentity {
-  const _WidgetSpanIdentity(this.key);
-
-  final Key? key;
-
-  bool get isKeyed => key != null;
-
-  static _WidgetSpanIdentity of(WidgetSpan span) {
-    return _WidgetSpanIdentity(span.child.key);
-  }
-}
-
 bool _widgetSpansEquivalentForUnchanged(WidgetSpan from, WidgetSpan to) {
-  final fromIdentity = _WidgetSpanIdentity.of(from);
-  final toIdentity = _WidgetSpanIdentity.of(to);
-  if (fromIdentity.isKeyed || toIdentity.isKeyed) {
-    return fromIdentity.key == toIdentity.key;
-  }
-  return true;
+  return _widgetAnchorKey(from) == _widgetAnchorKey(to);
 }
 
 bool _widgetSpansEquivalentForMetrics(WidgetSpan from, WidgetSpan to) {
@@ -28,7 +11,7 @@ bool _widgetSpansEquivalentForMetrics(WidgetSpan from, WidgetSpan to) {
       from.style == to.style;
 }
 
-Key? _widgetAnchorKey(WidgetSpan span) => _WidgetSpanIdentity.of(span).key;
+Key? _widgetAnchorKey(WidgetSpan span) => span.child.key;
 
 GlobalKey? _globalWidgetAnchorKey(WidgetSpan span) {
   final key = _widgetAnchorKey(span);

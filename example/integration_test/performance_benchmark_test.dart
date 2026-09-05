@@ -3,17 +3,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:reel_text/reel_text.dart';
 
-const _columns = 12;
+const _columns = 16;
 const _rows = 16;
 const _rollDuration = Duration(milliseconds: 560);
 const _rollInterval = Duration(milliseconds: 650);
-const _measuredRolls = 6;
+const _measuredRolls = 4;
 const _scenarios = <_BenchmarkScenario>[
-  (reportKey: 'plain_24', tileCount: 24, chromatic: false),
-  (reportKey: 'plain_96', tileCount: 96, chromatic: false),
-  (reportKey: 'chromatic_96', tileCount: 96, chromatic: true),
-  (reportKey: 'plain_192', tileCount: 192, chromatic: false),
-  (reportKey: 'chromatic_192', tileCount: 192, chromatic: true),
+  (reportKey: 'plain_1', tileCount: 1, chromatic: false),
+  (reportKey: 'chromatic_1', tileCount: 1, chromatic: true),
+  (reportKey: 'plain_4', tileCount: 4, chromatic: false),
+  (reportKey: 'chromatic_4', tileCount: 4, chromatic: true),
+  (reportKey: 'plain_8', tileCount: 8, chromatic: false),
+  (reportKey: 'chromatic_8', tileCount: 8, chromatic: true),
+  (reportKey: 'plain_16', tileCount: 16, chromatic: false),
+  (reportKey: 'chromatic_16', tileCount: 16, chromatic: true),
+  (reportKey: 'plain_32', tileCount: 32, chromatic: false),
+  (reportKey: 'chromatic_32', tileCount: 32, chromatic: true),
+  (reportKey: 'plain_64', tileCount: 64, chromatic: false),
+  (reportKey: 'chromatic_64', tileCount: 64, chromatic: true),
+  (reportKey: 'plain_128', tileCount: 128, chromatic: false),
+  (reportKey: 'chromatic_128', tileCount: 128, chromatic: true),
+  (reportKey: 'plain_256', tileCount: 256, chromatic: false),
+  (reportKey: 'chromatic_256', tileCount: 256, chromatic: true),
 ];
 
 typedef _BenchmarkScenario = ({

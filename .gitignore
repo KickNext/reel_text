@@ -33,3 +33,6 @@ migrate_working_dir/
 /build/
 /coverage/
 example/output/
+
+# FVM Version Cache
+.fvm/

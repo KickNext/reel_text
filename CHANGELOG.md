@@ -1,3 +1,24 @@
+## 0.5.0
+
+- Preserved Arabic joining and ligatures, including rich style boundaries and
+  join controls, by animating consecutive Arabic letters as shaped units.
+- Restored overflow handling for wide glyph faces and consistent RTL painting.
+- Added a direct text-only roll planner that avoids widget-anchor bookkeeping.
+- Reused text geometry within each frame and after widths settle, avoiding
+  repeated calculations during counter transitions and color fades.
+- Added real-font Text-reference tests and fixed-frame visual goldens in CI.
+- Unified settled and rolling glyph painting in one reusable render surface,
+  reducing per-frame widget and layout work. Prepared glyph painters are reused
+  across recurring rolls and disposed when no longer needed.
+- Synchronized inline widget measurements with the selectable text surface in
+  the same layout pass, preserving widget interaction and baseline geometry.
+- Fixed rendering regressions around glyph clipping, color fades, RTL alignment,
+  selection painting, and inherited text settings, including accessibility bold
+  text and reduced motion.
+- Expanded rendering regression tests and the profile benchmark across plain
+  and colored workloads from 1 to 256 labels.
+- No public API changes. The package still supports Flutter 3.16 and newer.
+
 ## 0.4.4
 
 - Added a concise, copy-ready example for the pub.dev Example tab while

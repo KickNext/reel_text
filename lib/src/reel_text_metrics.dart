@@ -5,48 +5,77 @@ class _ReelTextLayoutContext {
     required this.textDirection,
     required this.locale,
     required this.strutStyle,
-    required this.widgetSpanMetricsFor,
-    required this.onWidgetSpanMetricsChanged,
+    required this.widgetSpans,
   });
 
   final TextDirection textDirection;
   final Locale? locale;
   final StrutStyle? strutStyle;
-  final _WidgetSpanMetrics? Function(int index, WidgetSpan span)
-      widgetSpanMetricsFor;
-  final void Function(int index, WidgetSpan span, _WidgetSpanMetrics metrics)
-      onWidgetSpanMetricsChanged;
+  final _WidgetSpanLayoutModel widgetSpans;
+
+  _WidgetSpanMetrics? widgetSpanMetricsFor(int index, WidgetSpan span) {
+    return widgetSpans.metricsFor(index, span);
+  }
 
   Alignment get inlineStartAlignment => _inlineStartAlignment(textDirection);
 }
 
-class _WidgetSpanSizeRegistry {
-  final _entries = <int, _WidgetSpanSizeEntry>{};
+/// Shared, synchronous measurements for inline widgets.
+///
+/// The visual render surface writes these values during its layout pass. The
+/// text measurer and selectable surface then consume the same snapshot instead
+/// of asking the widget tree for a second, post-frame layout pass.
+class _WidgetSpanLayoutModel {
+  final _entries = <int, List<_WidgetSpanLayoutEntry>>{};
+  int _revision = 0;
+
+  int get revision => _revision;
 
   _WidgetSpanMetrics? metricsFor(int index, WidgetSpan span) {
-    final entry = _entries[index];
-    if (entry == null) {
+    final entries = _entries[index];
+    if (entries == null) {
       return null;
     }
-    if (identical(entry.span, span)) {
-      return entry.metrics;
+
+    for (final entry in entries.reversed) {
+      if (identical(entry.span, span)) {
+        return entry.metrics;
+      }
     }
-    if (_widgetSpansEquivalentForMetrics(entry.span, span)) {
-      return entry.metrics;
+    for (final entry in entries.reversed) {
+      if (_widgetSpansEquivalentForMetrics(entry.span, span)) {
+        return entry.metrics;
+      }
     }
     return null;
   }
 
-  bool hasMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {
-    return metricsFor(index, span) == metrics;
-  }
+  bool setMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {
+    final entries = _entries[index] ??= <_WidgetSpanLayoutEntry>[];
+    for (var i = entries.length - 1; i >= 0; i--) {
+      final entry = entries[i];
+      if (!identical(entry.span, span) &&
+          !_widgetSpansEquivalentForMetrics(entry.span, span)) {
+        continue;
+      }
+      if (entry.metrics == metrics && identical(entry.span, span)) {
+        return false;
+      }
+      entries[i] = (span: span, metrics: metrics);
+      _revision++;
+      return true;
+    }
 
-  void setMetrics(int index, WidgetSpan span, _WidgetSpanMetrics metrics) {
-    _entries[index] = (span: span, metrics: metrics);
+    entries.add((span: span, metrics: metrics));
+    if (entries.length > 4) {
+      entries.removeAt(0);
+    }
+    _revision++;
+    return true;
   }
 }
 
-typedef _WidgetSpanSizeEntry = ({
+typedef _WidgetSpanLayoutEntry = ({
   WidgetSpan span,
   _WidgetSpanMetrics metrics,
 });
@@ -130,16 +159,19 @@ class _MeasuredReelTextRun {
   }
 
   static _MeasuredReelTextRun of({
-    required BuildContext context,
     required _ReelTextContent content,
     required _ReelTextLayoutContext layout,
+    required TextScaler textScaler,
+    _WidgetSpanMetrics? Function(int index, WidgetSpan span)?
+        widgetSpanMetricsFor,
   }) {
     return _MeasuredReelTextRun(
       content: content,
       metrics: _TextRunMetrics.of(
-        context: context,
         content: content,
         layout: layout,
+        textScaler: textScaler,
+        widgetSpanMetricsFor: widgetSpanMetricsFor,
       ),
     );
   }
@@ -177,12 +209,12 @@ class _TextRunMetrics {
   }
 
   static _TextRunMetrics of({
-    required BuildContext context,
     required _ReelTextContent content,
     required _ReelTextLayoutContext layout,
+    required TextScaler textScaler,
+    _WidgetSpanMetrics? Function(int index, WidgetSpan span)?
+        widgetSpanMetricsFor,
   }) {
-    final textScaler =
-        MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
     final painter = TextPainter(
       text: content.span,
       textDirection: layout.textDirection,
@@ -193,7 +225,10 @@ class _TextRunMetrics {
     );
     try {
       painter.setPlaceholderDimensions(
-        _placeholderDimensionsFor(content, layout.widgetSpanMetricsFor),
+        _placeholderDimensionsFor(
+          content,
+          widgetSpanMetricsFor ?? layout.widgetSpanMetricsFor,
+        ),
       );
       painter.layout();
 
@@ -328,29 +363,6 @@ PlaceholderDimensions _placeholderDimensionsForWidget(
 }
 
 typedef _TokenBounds = ({double width, double left});
-
-class _SlotMetrics {
-  const _SlotMetrics({
-    required this.fromWidth,
-    required this.toWidth,
-    required this.height,
-    required this.alphabeticBaseline,
-    required this.ideographicBaseline,
-  });
-
-  final double fromWidth;
-  final double toWidth;
-  final double height;
-  final double alphabeticBaseline;
-  final double ideographicBaseline;
-
-  double baselineFor(TextBaseline baseline) {
-    return switch (baseline) {
-      TextBaseline.ideographic => ideographicBaseline,
-      TextBaseline.alphabetic => alphabeticBaseline,
-    };
-  }
-}
 
 Alignment _inlineStartAlignment(TextDirection textDirection) {
   return textDirection == TextDirection.rtl
