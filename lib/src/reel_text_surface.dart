@@ -189,6 +189,8 @@ class _ReelTextSurfaceGeometry {
   double rowWidth = 0;
   double desiredWidth = 0;
   double height = 0;
+  double progressMs = double.nan;
+  bool widthsSettled = false;
   Alignment rowAlignment = Alignment.centerLeft;
 
   double rowLeftFor(Size size) {
@@ -226,28 +228,25 @@ enum _ReelPreparedFaceLane { settled, from, to, coloredTo }
 /// whole cache when it changes.
 class _PreparedFaceKey {
   const _PreparedFaceKey({
-    required this.text,
-    required this.style,
+    required this.span,
     required this.width,
     required this.height,
   });
 
-  final String text;
-  final TextStyle style;
+  final TextSpan span;
   final double width;
   final double height;
 
   @override
   bool operator ==(Object other) {
     return other is _PreparedFaceKey &&
-        other.text == text &&
+        other.span == span &&
         other.width == width &&
-        other.height == height &&
-        other.style == style;
+        other.height == height;
   }
 
   @override
-  int get hashCode => Object.hash(text, width, height, style);
+  int get hashCode => Object.hash(span, width, height);
 }
 
 class _RenderReelTextSurface extends RenderBox
@@ -267,6 +266,9 @@ class _RenderReelTextSurface extends RenderBox
   _MeasuredReelTextRun? _measuredToRun;
   int _measuredWidgetRevision = -1;
   _ReelTextSurfaceGeometry? _laidOutGeometry;
+  int _geometryCalculationCount = 0;
+
+  int get debugGeometryCalculationCount => _geometryCalculationCount;
   List<_PreparedTextFace?>? _settledFaces;
   List<_PreparedTextFace?>? _fromFaces;
   List<_PreparedTextFace?>? _toFaces;
@@ -507,6 +509,17 @@ class _RenderReelTextSurface extends RenderBox
   _ReelTextSurfaceGeometry _geometry({
     _ReelTextSurfaceGeometry? reuse,
   }) {
+    // Plain-text geometry has no constraint-dependent child measurements.
+    // Reuse the tick's calculation during layout, and retain final widths
+    // while glyph motion or color fading continues. Data/scaler changes
+    // invalidate _laidOutGeometry before this can be reused.
+    if (reuse != null && !_data.hasWidgetSlots) {
+      final now = _data.progressMs;
+      if (now == reuse.progressMs ||
+          (reuse.widthsSettled && now >= reuse.progressMs)) {
+        return reuse;
+      }
+    }
     _syncMeasuredRuns();
     return _geometryFor((
       settled: _data.isRolling ? null : _settledRun,
@@ -522,6 +535,10 @@ class _RenderReelTextSurface extends RenderBox
     _ReelTextSurfaceRuns runs, {
     _ReelTextSurfaceGeometry? reuse,
   }) {
+    assert(() {
+      _geometryCalculationCount++;
+      return true;
+    }());
     if (!_data.isRolling) {
       final run = runs.settled!;
       final itemCount = run.visualOrder.length;
@@ -547,6 +564,7 @@ class _RenderReelTextSurface extends RenderBox
     final progressMs = _data.progressMs;
     final itemCount = plan.slots.length;
     final geometry = _geometryBuffer(reuse, itemCount);
+    var widthsSettled = true;
     var rowWidth = 0.0;
     for (var item = 0; item < itemCount; item++) {
       final slot = plan.slots[item];
@@ -562,10 +580,14 @@ class _RenderReelTextSurface extends RenderBox
       } else if (!slot.changed) {
         width = toWidth;
       } else {
+        final widthT = slot.widthT(progressMs);
+        if (fromWidth != toWidth && widthT < 1) {
+          widthsSettled = false;
+        }
         width = ui.lerpDouble(
           fromWidth,
           toWidth,
-          slot.widthT(progressMs),
+          widthT,
         )!;
       }
       geometry.itemWidths[item] = width;
@@ -581,6 +603,8 @@ class _RenderReelTextSurface extends RenderBox
             ? toRun.width
             : rowWidth;
     geometry
+      ..progressMs = progressMs
+      ..widthsSettled = widthsSettled
       ..rowWidth = rowWidth
       ..desiredWidth = desiredWidth
       ..height = math.max(fromRun.height, toRun.height)
@@ -973,8 +997,7 @@ class _RenderReelTextSurface extends RenderBox
         face: _preparedFaceAt(
           lane: _ReelPreparedFaceLane.settled,
           item: item,
-          text: token.text,
-          style: token.style,
+          token: token,
           width: width,
         ),
         itemLeft: rowLeft + geometry.itemLefts[item],
@@ -1025,8 +1048,7 @@ class _RenderReelTextSurface extends RenderBox
                 ? _ReelPreparedFaceLane.from
                 : _ReelPreparedFaceLane.to,
             item: item,
-            text: visibleToken.text,
-            style: visibleToken.style,
+            token: visibleToken,
             width: visibleWidth,
           ),
           itemLeft: itemLeft,
@@ -1061,8 +1083,7 @@ class _RenderReelTextSurface extends RenderBox
           face: _preparedFaceAt(
             lane: _ReelPreparedFaceLane.from,
             item: item,
-            text: fromToken.text,
-            style: fromToken.style,
+            token: fromToken,
             width: fromRun.widthFor(slot.from),
           ),
           itemLeft: itemLeft,
@@ -1075,8 +1096,7 @@ class _RenderReelTextSurface extends RenderBox
 
       if (slot.to != null && toToken != null && !toToken.isWidget) {
         final targetWidth = toRun.widthFor(slot.to);
-        final defaultTextColor =
-            toToken.style.color ?? _data.defaultTextColor;
+        final defaultTextColor = toToken.style.color ?? _data.defaultTextColor;
         final inT = slot.inT(progressMs);
         final directionSign =
             slot.direction == ReelTextDirection.down ? -1.0 : 1.0;
@@ -1087,9 +1107,9 @@ class _RenderReelTextSurface extends RenderBox
           final face = _preparedFaceAt(
             lane: _ReelPreparedFaceLane.to,
             item: item,
-            text: toToken.text,
-            style: toToken.style,
-            overrideColor: defaultTextColor,
+            token: toToken,
+            overrideColor:
+                toToken.shapedParts == null ? defaultTextColor : null,
             width: targetWidth,
           );
           _paintPreparedFace(
@@ -1114,8 +1134,7 @@ class _RenderReelTextSurface extends RenderBox
               face: _preparedFaceAt(
                 lane: _ReelPreparedFaceLane.coloredTo,
                 item: item,
-                text: toToken.text,
-                style: toToken.style,
+                token: toToken,
                 overrideColor: color,
                 width: targetWidth,
               ),
@@ -1133,9 +1152,9 @@ class _RenderReelTextSurface extends RenderBox
               face: _preparedFaceAt(
                 lane: _ReelPreparedFaceLane.to,
                 item: item,
-                text: toToken.text,
-                style: toToken.style,
-                overrideColor: defaultTextColor,
+                token: toToken,
+                overrideColor:
+                    toToken.shapedParts == null ? defaultTextColor : null,
                 width: targetWidth,
               ),
               itemLeft: itemLeft,
@@ -1148,10 +1167,10 @@ class _RenderReelTextSurface extends RenderBox
             _paintTransientFace(
               canvas,
               origin: origin,
-              text: toToken.text,
-              style: toToken.style.copyWith(
-                color: Color.lerp(color, defaultTextColor, colorT),
-              ),
+              token: toToken,
+              tint: color,
+              tintProgress: colorT,
+              defaultColor: defaultTextColor,
               width: targetWidth,
               itemLeft: itemLeft,
               itemWidth: itemWidth,
@@ -1170,8 +1189,7 @@ class _RenderReelTextSurface extends RenderBox
   _PreparedTextFace _preparedFaceAt({
     required _ReelPreparedFaceLane lane,
     required int item,
-    required String text,
-    required TextStyle style,
+    required _ReelTextToken token,
     required double width,
     Color? overrideColor,
   }) {
@@ -1180,18 +1198,16 @@ class _RenderReelTextSurface extends RenderBox
     if (cached != null) {
       return cached;
     }
-    final effectiveStyle =
-        overrideColor == null ? style : style.copyWith(color: overrideColor);
+    final span = _paintSpanForToken(token, tint: overrideColor);
     final key = _PreparedFaceKey(
-      text: text,
-      style: effectiveStyle,
+      span: span,
       width: width,
       height: _height,
     );
     var face = _faceCache.remove(key);
     if (face == null) {
       _preparedFaceLayoutCount++;
-      face = _createFace(text: text, style: effectiveStyle, width: width);
+      face = _createFace(span: span, width: width);
     }
     // Re-inserting keeps the map ordered by recency for eviction.
     _faceCache[key] = face;
@@ -1217,21 +1233,20 @@ class _RenderReelTextSurface extends RenderBox
   }
 
   _PreparedTextFace _createFace({
-    required String text,
-    required TextStyle style,
+    required TextSpan span,
     required double width,
   }) {
     final height = _height;
     final paintWidth = width + _horizontalTextTokenBleed(height);
     final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
+      text: span,
       textDirection: _data.layout.textDirection,
       textAlign: TextAlign.start,
       textScaler: _textScaler,
       locale: _data.layout.locale,
       strutStyle: _data.layout.strutStyle,
       maxLines: 1,
-    )..layout(minWidth: paintWidth, maxWidth: paintWidth);
+    )..layout(minWidth: paintWidth, maxWidth: double.infinity);
     return _PreparedTextFace(
       painter: painter,
       width: width,
@@ -1244,8 +1259,10 @@ class _RenderReelTextSurface extends RenderBox
   void _paintTransientFace(
     Canvas canvas, {
     required Offset origin,
-    required String text,
-    required TextStyle style,
+    required _ReelTextToken token,
+    required Color tint,
+    required double tintProgress,
+    required Color defaultColor,
     required double width,
     required double itemLeft,
     required double itemWidth,
@@ -1253,11 +1270,19 @@ class _RenderReelTextSurface extends RenderBox
     required double angle,
     required double opacity,
   }) {
-    final face = _createFace(text: text, style: style, width: width);
+    final face = _createFace(
+      span: _paintSpanForToken(
+        token,
+        tint: tint,
+        tintProgress: tintProgress,
+        defaultColor: defaultColor,
+      ),
+      width: width,
+    );
     try {
       _paintPreparedFace(
         canvas,
-        debugText: text,
+        debugText: token.text,
         origin: origin,
         face: face,
         itemLeft: itemLeft,
@@ -1330,10 +1355,23 @@ class _RenderReelTextSurface extends RenderBox
           ),
       );
     }
+    final clipOverflow = face.painter.width > face.paintWidth;
+    if (clipOverflow) {
+      canvas.save();
+      canvas.clipRect(Rect.fromLTWH(
+        paintOrigin.dx + face.paintDx,
+        paintOrigin.dy,
+        face.paintWidth,
+        face.height,
+      ));
+    }
     face.painter.paint(
       canvas,
       Offset(paintOrigin.dx + face.paintDx, paintOrigin.dy),
     );
+    if (clipOverflow) {
+      canvas.restore();
+    }
     if (translucent) {
       canvas.restore();
     }

@@ -17,6 +17,7 @@ part 'reel_text_plan.dart';
 part 'reel_text_roll_state.dart';
 part 'reel_text_runs.dart';
 part 'reel_text_selection.dart';
+part 'reel_text_shaping.dart';
 part 'reel_text_slot_plan.dart';
 part 'reel_text_surface.dart';
 part 'reel_text_widget.dart';

@@ -289,13 +289,16 @@ Directionality(
 During a roll, bidi labels are diffed in visual slots instead of applying a
 separate horizontal correction after the glyph replacement.
 
-Because each grapheme cluster gets its own measured slot, Flutter still owns
-the font metrics, bidi visual order, and emoji clusters, but text shaping is not
-identical to one continuous `Text` run in every script. Latin kerning pairs and
-ligatures may look slightly looser during slot animation, and connected scripts
-such as Arabic should be tested in context before using a roll effect. For short
-labels, counters, statuses, and commands, this tradeoff keeps the motion
-predictable.
+Consecutive Arabic letters move as one shaped unit, preserving contextual
+forms, ligatures, diacritics, and explicit joining controls. This also works
+across rich-text style boundaries. Spaces, numbers, and inline widgets separate
+these units. Stagger and `colorBuilder` apply per animation unit, so an Arabic
+word receives one timing and tint while adjacent counter digits roll separately.
+
+Other text uses measured grapheme slots. Flutter owns the font metrics, bidi
+order, and emoji clusters, but Latin kerning and ligatures can still differ
+slightly from one continuous `Text` run during animation. Other connected
+scripts should be tested in context.
 
 ## Editable text
 

@@ -24,17 +24,18 @@ class _ReelTextContent {
     return _ReelTextContent(
       span: TextSpan(text: text, style: style),
       plainText: text,
-      tokens: tokens,
+      tokens: _joinArabicTokens(tokens, text),
     );
   }
 
   factory _ReelTextContent.rich(InlineSpan span, TextStyle style) {
     final tokens = <_ReelTextToken>[];
     _collectTokens(span, style, tokens);
+    final plainText = _rollingTextFor(span);
     return _ReelTextContent(
       span: TextSpan(style: style, children: [span]),
-      plainText: _rollingTextFor(span),
-      tokens: tokens,
+      plainText: plainText,
+      tokens: _joinArabicTokens(tokens, plainText),
     );
   }
 
@@ -67,16 +68,21 @@ class _ReelTextToken {
   const _ReelTextToken.text({
     required this.text,
     required this.style,
+    this.shapedParts,
   }) : widgetSpan = null;
 
   const _ReelTextToken.widget({
     required WidgetSpan this.widgetSpan,
     required this.style,
-  }) : text = _placeholderGlyph;
+  })  : text = _placeholderGlyph,
+        shapedParts = null;
 
   final String text;
   final TextStyle style;
   final WidgetSpan? widgetSpan;
+
+  /// Style runs within one Arabic shaping unit, kept together during motion.
+  final List<_ReelTextToken>? shapedParts;
 
   bool get isWidget => widgetSpan != null;
 }

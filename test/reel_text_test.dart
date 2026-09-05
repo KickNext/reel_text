@@ -4623,11 +4623,11 @@ void main() {
       tester,
     ) async {
       Widget frame({required bool intrinsic}) {
-        final row = Row(
+        const row = Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
-          children: const [
+          children: [
             Text('Label', style: TextStyle(fontSize: 14)),
             ReelText('42', key: reelKey, style: TextStyle(fontSize: 30)),
           ],
@@ -4635,7 +4635,7 @@ void main() {
         return MaterialApp(
           home: SelectionArea(
             child: Center(
-              child: intrinsic ? IntrinsicHeight(child: row) : row,
+              child: intrinsic ? const IntrinsicHeight(child: row) : row,
             ),
           ),
         );

@@ -31,6 +31,30 @@ flutter drive \
   -d macos
 ```
 
+Replace `macos` with the target device ID from `flutter devices` (for example,
+`windows`). The benchmark covers 1, 4, 8, 16, 32, 64, 128, and 256 labels with
+plain and chromatic rolls. Results are saved to
+`build/integration_response_data.json`. Compare runs on the same device and SDK;
+the benchmark records timings but does not enforce a performance threshold.
+
+This grid is a stress test, not a model of typical application usage. For
+single-label compute regressions, run `flutter test test/reel_text_compute_test.dart`
+from the package root. It covers counter updates, copy feedback, completed
+color fades, idle time, and subsequent transitions. Its work counts are not
+wall-clock performance measurements.
+
+To capture the rendering matrix on an Android device:
+
+```bash
+flutter drive \
+  --driver=test_driver/visual_regression.dart \
+  --target=integration_test/visual_regression_test.dart \
+  -d <android-device-id>
+```
+
+Screenshots are saved to `build/visual_screenshots/` for manual comparison.
+This capture test does not automatically compare images against a baseline.
+
 Run the interactive showcase with:
 
 ```bash

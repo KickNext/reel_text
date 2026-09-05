@@ -19,6 +19,35 @@ class _RollPlan {
   }) {
     final fromOrder = from.visualOrder;
     final toOrder = to.visualOrder;
+    // Text-only labels have no anchors or segments to sort. Build their
+    // visual slots directly, without allocating chunks, ranks and two copies
+    // of each visual-order list or visiting every slot twice.
+    if (!from.hasWidgets && !to.hasWidgets) {
+      final count = math.max(fromOrder.length, toOrder.length);
+      final state = _SlotBuildState(totalSlots: count);
+      for (var i = 0; i < count; i++) {
+        final fromIndex = alignVisualOrderFromEnd
+            ? i - (count - fromOrder.length)
+            : i;
+        final toIndex = alignVisualOrderFromEnd
+            ? i - (count - toOrder.length)
+            : i;
+        _appendSlot(
+          state: state,
+          options: options,
+          from: fromIndex >= 0 && fromIndex < fromOrder.length
+              ? from.endpointAt(fromOrder[fromIndex])
+              : null,
+          to: toIndex >= 0 && toIndex < toOrder.length
+              ? to.endpointAt(toOrder[toIndex])
+              : null,
+        );
+      }
+      return _RollPlan(
+        slots: state.slots,
+        totalDuration: Duration(milliseconds: state.maxEndMs),
+      );
+    }
     final chunks = <_PlanChunk>[];
     final anchors = _matchedWidgetAnchors(from, to);
     var fromStart = 0;

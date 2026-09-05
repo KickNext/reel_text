@@ -9,6 +9,11 @@
 /assets/reel_text_hero_light_720p_60fps_full_cycle.webp
 build/
 coverage/
+# Repository-only visual tests and their font/golden fixtures.
+/test/fonts/
+/test/goldens/
+/test/reel_text_visual_test.dart
+/test/reel_text_compute_test.dart
 docs/
 /output/
 example/android/
