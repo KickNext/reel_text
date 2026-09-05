@@ -1,4 +1,4 @@
-## 0.4.5
+## 0.5.0
 
 - Preserved Arabic joining and ligatures, including rich style boundaries and
   join controls, by animating consecutive Arabic letters as shaped units.
