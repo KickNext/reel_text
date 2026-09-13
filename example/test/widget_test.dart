@@ -465,7 +465,7 @@ void main() {
     );
     expect(
       skillCommand.data,
-      'npx skills add KickNext/reel_text\n--skill reel-text --agent universal --yes',
+      'dart run skills@ get\n--package reel_text --all',
     );
     expect(skillCommand.style?.decoration, isNot(TextDecoration.underline));
     expect(

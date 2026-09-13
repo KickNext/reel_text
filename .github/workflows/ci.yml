@@ -83,3 +83,22 @@ jobs:
 
       - name: Publish dry-run
         run: dart pub publish --dry-run
+
+      - name: Verify bundled agent skill
+        shell: bash
+        run: |
+          set -euo pipefail
+          consumer_dir="$(mktemp -d)"
+          trap 'rm -rf "$consumer_dir"' EXIT
+
+          flutter create \
+            --empty \
+            --project-name reel_text_skills_consumer \
+            "$consumer_dir"
+          cd "$consumer_dir"
+          flutter pub add reel_text --path "$GITHUB_WORKSPACE"
+          dart run skills@ get \
+            --package reel_text \
+            --skill reel-text-usage \
+            --agent generic
+          test -f .agents/skills/reel-text-usage/SKILL.md

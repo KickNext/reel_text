@@ -1,3 +1,13 @@
+## 0.5.1
+
+- Updated the bundled AI agent skill for Dart Skills CLI 1.0: renamed it to
+  the required package-prefixed `reel-text-usage`, documented dependency-based
+  installation with `dart run skills@ get`, ignored the CLI manifest when agent
+  configuration is not version-controlled, and added an end-to-end CI install
+  check.
+- Documented removal of the old `npx skills` installation so users do not keep
+  both `reel-text` and `reel-text-usage` active.
+
 ## 0.5.0
 
 - Preserved Arabic joining and ligatures, including rich style boundaries and
