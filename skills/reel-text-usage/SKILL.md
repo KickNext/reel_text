@@ -1,5 +1,5 @@
 ---
-name: reel-text
+name: reel-text-usage
 description: "Use when adding, reviewing, or refactoring Flutter UI that may use reel_text for compact rolling text: command feedback, async/status labels, counters, rotating short phrases, styled TextSpan phrases, WidgetSpan inline anchors, or editable inline corrections. Also use when deciding whether plain Text is better or installing reel_text."
 ---
 
@@ -170,12 +170,12 @@ await label.runWhile(
 
 ## Pressure Test Evidence
 
-Recorded on 2026-06-23 for the `0.3.0` package release. This combines a manual pressure review against the skill contract and the current `npx skills` install flow.
+Recorded on 2026-09-14 for the `0.5.1` package release. This combines a manual pressure review against the skill contract and the Dart Skills CLI 1.0 package dependency flow.
 
-Install the bundled skill from the GitHub repository with:
+Install the bundled, version-matched skill from a Flutter app that depends on `reel_text` with:
 
 ```bash
-npx skills add KickNext/reel_text --skill reel-text --agent universal --yes
+dart run skills@ get --package reel_text --all
 ```
 
 Scenario outcomes:
@@ -191,8 +191,9 @@ Scenario outcomes:
 CLI install evidence:
 
 - Created a temporary install directory.
-- Ran `npx skills add KickNext/reel_text --skill reel-text --agent universal --yes`.
-- The CLI found one skill and installed `reel-text` into `./.agents/skills/reel-text` using the universal Agent Skills layout.
+- Added this repository as a path dependency and ran `flutter pub get`.
+- Ran `dart run skills@ get --package reel_text --all --agent generic`.
+- The CLI found one package skill and installed `reel-text-usage` into the detected agent's Agent Skills directory.
 
 Release note: this evidence validates the optional agent skill install path. It does not indicate runtime API or widget behavior changes.
 

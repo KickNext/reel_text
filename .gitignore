@@ -30,6 +30,7 @@ migrate_working_dir/
 .agent/
 .agents/
 .dart_skills/
+**/.config/dart_skills/
 /build/
 /coverage/
 example/output/

@@ -61,13 +61,11 @@ Run the interactive showcase with:
 flutter run
 ```
 
-Install the optional agent skill for this app with the `npx skills` CLI style
-used by the official
-[Flutter](https://github.com/flutter/skills) and
-[Dart](https://github.com/dart-lang/skills) skill repositories:
+Install the optional, version-matched agent skill bundled with `reel_text`
+using the official Dart Skills CLI 1.0:
 
 ```bash
-npx skills add KickNext/reel_text --skill reel-text --agent universal --yes
+dart run skills@ get --package reel_text --all
 ```
 
 Run it from this `example/` directory. It creates local agent-tooling files

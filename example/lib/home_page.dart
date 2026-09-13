@@ -1765,10 +1765,9 @@ class _InstallBlock extends StatefulWidget {
 
 class _InstallBlockState extends State<_InstallBlock> {
   static const _packageCommand = 'flutter pub add reel_text';
-  static const _skillCommand =
-      'npx skills add KickNext/reel_text --skill reel-text --agent universal --yes';
+  static const _skillCommand = 'dart run skills@ get --package reel_text --all';
   static const _skillCommandDisplay =
-      'npx skills add KickNext/reel_text\n--skill reel-text --agent universal --yes';
+      'dart run skills@ get\n--package reel_text --all';
   static const _controlHeight = 48.0;
   static const _skillControlHeight = 60.0;
 

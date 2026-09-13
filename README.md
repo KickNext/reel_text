@@ -34,23 +34,27 @@ import 'package:reel_text/reel_text.dart';
 ## AI agent skill
 
 This repository includes an optional agent skill for AI coding tools:
-[`skills/reel-text/SKILL.md`](https://github.com/KickNext/reel_text/blob/main/skills/reel-text/SKILL.md).
+[`skills/reel-text-usage/SKILL.md`](https://github.com/KickNext/reel_text/blob/main/skills/reel-text-usage/SKILL.md).
 It helps agents decide when `reel_text` is appropriate, when plain `Text` is
 better, and which API to use.
 
-Install it with the `npx skills` CLI style used by the official
-[Flutter](https://github.com/flutter/skills) and
-[Dart](https://github.com/dart-lang/skills) skill repositories:
+After adding `reel_text` to an app, install the version-matched skill bundled
+with the package using the official Dart Skills CLI 1.0:
 
 ```bash
-npx skills add KickNext/reel_text --skill reel-text --agent universal --yes
+dart run skills@ get --package reel_text --all
 ```
 
 Run it from the root of the Flutter app where you want the agent skill
-installed. Re-run `npx skills update` after updating skills.
+installed. Re-run the same command after updating `reel_text`; subsequent runs
+only apply skill changes.
 
-This installs the `reel-text` skill into agent directories through the
-universal Agent Skills layout. The skill tells agents to animate only short
+If you previously installed the old `reel-text` skill with `npx skills`, remove
+that copy with the same tool. Dart Skills CLI only manages skills it installed,
+so otherwise both the old and new instructions can remain active.
+
+The CLI detects supported coding agents and installs `reel-text-usage` into
+their Agent Skills directory. The skill tells agents to animate only short
 stateful text, reject broad `Text` replacements, preserve layout and
 accessibility, and choose the narrowest `reel_text` API for the interaction.
 
@@ -60,7 +64,7 @@ optional Codex/OpenAI UI metadata.
 Then ask:
 
 ```text
-Use $reel-text to add meaningful rolling text transitions to this Flutter UI.
+Use $reel-text-usage to add meaningful rolling text transitions to this Flutter UI.
 ```
 
 ## When to use it
