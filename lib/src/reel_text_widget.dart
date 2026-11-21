@@ -452,7 +452,7 @@ class _ReelTextState extends State<ReelText>
       child = _RollingReelText(
         surfaceKey: _surfaceKey,
         plan: roll.plan,
-        defaultTextColor: style.color ?? Colors.black,
+        defaultTextColor: style.color ?? _fallbackTextColor,
         fromRun: roll.from.run,
         toRun: roll.to.run,
         animation: _controller,

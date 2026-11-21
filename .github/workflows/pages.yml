@@ -24,16 +24,16 @@ jobs:
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          channel: stable
+          flutter-version-file: .fvmrc
           cache: true
 
       - name: Install dependencies
         working-directory: example
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Build web demo
         working-directory: example
-        run: flutter build web --release --base-href "/reel_text/"
+        run: flutter build web --release --no-pub --base-href "/reel_text/"
 
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6

@@ -62,7 +62,7 @@ TextSpan _paintSpanForToken(
   _ReelTextToken token, {
   Color? tint,
   double tintProgress = 0,
-  Color defaultColor = Colors.black,
+  Color defaultColor = _fallbackTextColor,
 }) {
   TextStyle effectiveStyle(TextStyle style) => tint == null
       ? style

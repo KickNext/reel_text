@@ -86,7 +86,7 @@ class _ReelTextSurfaceData {
         toRun = null,
         animation = null,
         textAlign = TextAlign.start,
-        defaultTextColor = Colors.black;
+        defaultTextColor = _fallbackTextColor;
 
   const _ReelTextSurfaceData.rolling({
     required _RollPlan this.plan,
