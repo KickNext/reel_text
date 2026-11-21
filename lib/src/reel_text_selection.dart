@@ -289,10 +289,11 @@ InlineSpan _transparentInlineSpan(
 }
 
 TextStyle _transparentLayoutStyle(TextStyle style) {
+  const transparent = Color(0x00000000);
   return TextStyle(
     inherit: style.inherit,
-    color: Colors.transparent,
-    backgroundColor: Colors.transparent,
+    color: transparent,
+    backgroundColor: transparent,
     fontSize: style.fontSize,
     fontWeight: style.fontWeight,
     fontStyle: style.fontStyle,
@@ -306,7 +307,7 @@ TextStyle _transparentLayoutStyle(TextStyle style) {
     fontFeatures: style.fontFeatures,
     fontVariations: style.fontVariations,
     decoration: TextDecoration.none,
-    decorationColor: Colors.transparent,
+    decorationColor: transparent,
     fontFamily: style.fontFamily,
     fontFamilyFallback: style.fontFamilyFallback,
     overflow: style.overflow,

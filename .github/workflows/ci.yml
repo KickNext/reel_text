@@ -59,7 +59,7 @@ jobs:
 
       - name: Install example dependencies
         working-directory: example
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Verify dependency setup leaves checkout clean
         run: git diff --exit-code

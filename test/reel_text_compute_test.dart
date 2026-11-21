@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reel_text/reel_text.dart';
 
@@ -17,7 +17,7 @@ void main() {
                   stagger: Duration(milliseconds: 30),
                   exitOffset: Duration.zero,
                   bounce: 0,
-                  color: Colors.blue,
+                  color: Color(0xFF2196F3),
                   colorFade: Duration(milliseconds: 400),
                 ),
               ),

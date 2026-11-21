@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.12.1
+  sdk: ^3.13.0
 
 dependencies:
   flutter:
@@ -12,6 +12,7 @@ dependencies:
   flutter_svg: ^2.3.0
   google_fonts: ^8.2.1
   http: ^1.6.0
+  material_ui: ^1.11.1
   reel_text:
     path: ..
   shared_preferences: ^2.5.5
